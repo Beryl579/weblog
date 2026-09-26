@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weblog DDK — Login / Daftar</title>
+<style><?!= include('Styles/Main') ?></style>
+<style>
+  body{background:var(--bg)}
+  .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+  .auth-card{width:100%;max-width:440px;background:#fff;border:1px solid var(--border);border-radius:20px;padding:28px;box-shadow:var(--shadow-card)}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+  .brand .name{font-weight:800;font-size:18px;color:var(--dark)}
+  .brand .sub{font-size:11px;color:var(--muted)}
+  .seg{display:flex;background:#eef4ee;border-radius:999px;padding:4px;margin:14px 0 18px}
+  .seg button{flex:1;border:none;background:transparent;padding:10px;border-radius:999px;font-weight:700;font-size:13px;cursor:pointer;color:var(--muted);transition:0.15s}
+  .seg button.active{background:var(--sidebar-bg);color:#fff;box-shadow:0 2px 8px rgba(15,46,28,0.2)}
+  .msg{display:none;padding:10px 12px;border-radius:10px;margin-bottom:12px;font-size:13px}
+  .msg.err{display:block;background:#fdeef0;color:#a12a3a;border:1px solid #f8d3d8}
+  .msg.ok{display:block;background:#e9f7ee;color:#0a7a2e;border:1px solid #cdebd7}
+  .msg.info{display:block;background:#eef3fb;color:#2a4a8a;border:1px solid #d6e2f5}
+  .demo-box{margin-top:14px;background:#f6fbf6;border:1px dashed #c8e6c9;border-radius:12px;padding:12px;font-size:12px;color:var(--muted)}
+  .demo-box code{background:#e6f3e6;color:#166534;padding:2px 8px;border-radius:6px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="brand">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="name">Weblog DDK</div>
+        <div class="sub">Dasar-Dasar Ketenagalistrikan · SMK TR 2 Sinar Husni</div>
+      </div>
+    </div>
+
+    <div class="seg">
+      <button id="tabLogin" class="active" onclick="switchTab('login')">Masuk</button>
+      <button id="tabDaftar" onclick="switchTab('daftar')">Daftar Siswa</button>
+    </div>
+
+    <div id="msg" class="msg"></div>
+
+    <!-- LOGIN -->
+    <form id="formLogin" onsubmit="return doLogin(event)">
+      <div class="form-group">
+        <label class="label" for="nis">NIS / Username</label>
+        <input class="input" id="nis" placeholder="Contoh: 2024001 atau GURU001" autocomplete="username" required>
+      </div>
+      <div class="form-group">
+        <label class="label" for="pw">Password</label>
+        <input class="input" id="pw" type="password" placeholder="••••••" autocomplete="current-password" required>
+      </div>
+      <button class="btn-hero-primary" style="width:100%;justify-content:center;margin-top:8px" id="btnLogin" type="submit">Masuk</button>
+      <div style="text-align:center;margin-top:10px"><small>Belum punya akun? <a href="#" onclick="switchTab('daftar');return false" style="font-weight:700">Daftar sekarang</a></small></div>
+    </form>
+
+    <!-- DAFTAR -->
+    <form id="formDaftar" style="display:none" onsubmit="return doDaftar(event)">
+      <div class="form-group">
+        <label class="label" for="rNis">NIS</label>
+        <input class="input" id="rNis" placeholder="Nomor Induk Siswa" inputmode="numeric" required>
+      </div>
+      <div class="form-group">
+        <label class="label" for="rNama">Nama Lengkap</label>
+        <input class="input" id="rNama" placeholder="Nama sesuai absen" required>
+      </div>
+      <div class="form-group">
+        <label class="label" for="rKelas">Kelas</label>
+        <select class="input" id="rKelas" required>
+          <option value="X TITL 1">X TITL 1</option>
+          <option value="X TITL 2">X TITL 2</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="label" for="rPw">Password (min. 6 karakter)</label>
+        <input class="input" id="rPw" type="password" placeholder="••••••" required>
+      </div>
+      <div class="form-group">
+        <label class="label" for="rPw2">Konfirmasi Password</label>
+        <input class="input" id="rPw2" type="password" placeholder="••••••" required>
+      </div>
+      <button class="btn-hero-primary" style="width:100%;justify-content:center;margin-top:8px" id="btnDaftar" type="submit">Daftar</button>
+      <div style="text-align:center;margin-top:10px"><small>Sudah punya akun? <a href="#" onclick="switchTab('login');return false" style="font-weight:700">Masuk di sini</a></small></div>
+    </form>
+
+    <div class="demo-box" id="demoBox">
+      <strong>Akun demo:</strong> siswa <code>2024001 / siswa123</code> · guru <code>GURU001 / guru123</code><br>
+      <span style="opacity:0.8">Saat deploy GAS, akun tersimpan di Sheet <em>users</em>.</span>
+    </div>
+  </div>
+</div>
+
+<?!= include('Components/Toast') ?>
+
+<script>
+var BACKEND = (typeof google !== 'undefined' && google.script && google.script.run) ? 'gas' : 'local';
+
+function switchTab(t){
+  document.getElementById('tabLogin').classList.toggle('active', t==='login');
+  document.getElementById('tabDaftar').classList.toggle('active', t==='daftar');
+  document.getElementById('formLogin').style.display = t==='login' ? '' : 'none';
+  document.getElementById('formDaftar').style.display = t==='daftar' ? '' : 'none';
+  hideMsg();
+}
+function showMsg(text, type){
+  var el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg ' + (type||'info');
+}
+function hideMsg(){ var el=document.getElementById('msg'); el.className='msg'; el.textContent=''; }
+
+function gotoByRole(user){
+  localStorage.setItem('nis', user.nis);
+  localStorage.setItem('user', JSON.stringify(user));
+  var role = String(user.role||'siswa').toLowerCase();
+  if(role==='guru' || role==='admin') location.href = '?page=guru';
+  else location.href = '?page=dashboard';
+}
+
+// Auto-restore session
+(function(){
+  try{
+    var u = JSON.parse(localStorage.getItem('user')||'null');
+    if(u && u.nis){
+      if(BACKEND==='gas'){
+        google.script.run.withSuccessHandler(function(res){
+          if(res && res.success) gotoByRole(u);
+          else localStorage.removeItem('user');
+        }).getCurrentUser(String(u.nis));
+      } else {
+        // local: langsung masuk (session divalidasi server saat API call)
+        var role = String(u.role||'siswa').toLowerCase();
+        location.href = (role==='guru'||role==='admin') ? '?page=guru' : '?page=dashboard';
+      }
+    }
+  }catch(e){}
+})();
+
+function doLogin(ev){
+  ev.preventDefault();
+  var nis = document.getElementById('nis').value.trim();
+  var pw  = document.getElementById('pw').value;
+  if(!nis || !pw) return false;
+  var btn = document.getElementById('btnLogin');
+  btn.disabled = true; btn.textContent = 'Memproses...';
+  hideMsg();
+
+  var done = function(res){
+    btn.disabled = false; btn.textContent = 'Masuk';
+    if(res && res.success){
+      showToast('Login berhasil. Selamat belajar!', 'success');
+      gotoByRole(res.user);
+    } else {
+      showMsg((res && res.message) ? res.message : 'Login gagal. Coba lagi.', 'err');
+    }
+  };
+  var fail = function(err){
+    btn.disabled = false; btn.textContent = 'Masuk';
+    showMsg('Kesalahan jaringan/server. Coba lagi.', 'err');
+  };
+
+  if(BACKEND==='gas'){
+    google.script.run.withSuccessHandler(done).withFailureHandler(fail).login(nis, pw);
+  } else {
+    fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nis:nis,password:pw})})
+      .then(function(r){return r.json()}).then(done).catch(fail);
+  }
+  return false;
+}
+
+function doDaftar(ev){
+  ev.preventDefault();
+  var nis   = document.getElementById('rNis').value.trim();
+  var nama  = document.getElementById('rNama').value.trim();
+  var kelas = document.getElementById('rKelas').value;
+  var pw    = document.getElementById('rPw').value;
+  var pw2   = document.getElementById('rPw2').value;
+  if(pw.length < 6){ showMsg('Password minimal 6 karakter.','err'); return false; }
+  if(pw !== pw2){ showMsg('Konfirmasi password tidak cocok.','err'); return false; }
+  var btn = document.getElementById('btnDaftar');
+  btn.disabled = true; btn.textContent = 'Mendaftarkan...';
+  hideMsg();
+
+  var done = function(res){
+    btn.disabled = false; btn.textContent = 'Daftar';
+    if(res && res.success){
+      showMsg('Registrasi berhasil! Silakan masuk dengan NIS Anda.', 'ok');
+      setTimeout(function(){ switchTab('login'); document.getElementById('nis').value = nis; document.getElementById('pw').focus(); }, 900);
+    } else {
+      showMsg((res && res.message) ? res.message : 'Registrasi gagal.', 'err');
+    }
+  };
+  var fail = function(){ btn.disabled=false; btn.textContent='Daftar'; showMsg('Kesalahan jaringan/server.','err'); };
+
+  if(BACKEND==='gas'){
+    google.script.run.withSuccessHandler(done).withFailureHandler(fail).register(nis, nama, kelas, pw, pw2);
+  } else {
+    fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nis:nis,nama:nama,kelas:kelas,password:pw,confirmPassword:pw2})})
+      .then(function(r){return r.json()}).then(done).catch(fail);
+  }
+  return false;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "weblog-ddk-local",
+  "version": "1.0.0",
+  "description": "Local server for Weblog DDK — GAS replication with JSON db",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["weblog", "ddk", "pbl", "gas"],
+  "author": "Rismauli Napitupulu",
+  "license": "MIT"
+}

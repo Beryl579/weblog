@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weblog DDK — Dashboard Guru</title>
+<style><?!= include('Styles/Main') ?></style>
+<style>
+  .guru-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+  .guru-card{width:100%;max-width:400px;background:#fff;border:1px solid var(--border);border-radius:20px;padding:28px;box-shadow:var(--shadow-card)}
+  .tbl-score{font-weight:700;color:var(--primary)}
+  .tbl-nil{color:var(--muted)}
+  .badge-kelas{background:#e6f3e6;color:#166534;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700}
+  .refresh-btn{display:inline-flex;align-items:center;gap:6px}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN GURU (gate) ============ -->
+<div id="gateLogin" class="guru-login" style="display:none">
+  <div class="guru-card">
+    <div class="brand" style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div class="logo-icon">⚡</div>
+      <div><div style="font-weight:800;font-size:18px">Dashboard Guru</div><div style="font-size:11px;color:var(--muted)">Akses khusus guru — masukkan username & password</div></div>
+    </div>
+    <div id="gateMsg" class="msg" style="display:none;padding:10px 12px;border-radius:10px;margin-bottom:12px;font-size:13px"></div>
+    <form onsubmit="return gateLogin(event)">
+      <div class="form-group"><label class="label">Username</label><input class="input" id="gUser" placeholder="GURU001" required></div>
+      <div class="form-group"><label class="label">Password</label><input class="input" id="gPass" type="password" placeholder="••••••" required></div>
+      <button class="btn-hero-primary" style="width:100%;justify-content:center;margin-top:6px" id="gBtn" type="submit">Masuk Dashboard</button>
+    </form>
+    <div style="text-align:center;margin-top:12px"><small><a href="?page=login">← Halaman siswa</a></small></div>
+    <div style="margin-top:14px;background:#f6fbf6;border:1px dashed #c8e6c9;border-radius:12px;padding:12px;font-size:12px;color:var(--muted)">
+      Demo lokal: <code style="background:#e6f3e6;color:#166534;padding:2px 8px;border-radius:6px;font-weight:700">GURU001 / guru123</code>
+    </div>
+  </div>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<div id="guruApp" class="app" style="display:none">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-icon">⚡</div>
+      <div><div class="sidebar-title">Weblog DDK</div><div class="sidebar-subtitle">Dashboard Guru</div></div>
+    </div>
+    <div class="sidebar-section">Pemantauan</div>
+    <nav class="sidebar-nav">
+      <a href="#/rekap" data-r="rekap"><span class="icon">📊</span> Rekap Siswa</a>
+    </nav>
+    <div class="sidebar-section">Data</div>
+    <nav class="sidebar-nav">
+      <a href="#" onclick="exportCsv();return false"><span class="icon">⬇️</span> Ekspor CSV</a>
+    </nav>
+    <div class="sidebar-section">Akun</div>
+    <nav class="sidebar-nav">
+      <a href="#" onclick="guruLogout();return false"><span class="icon">↪</span> Logout</a>
+    </nav>
+    <div class="sidebar-footer"><small id="sbGuru">...</small><br><small style="opacity:0.7">SMK TR 2 Sinar Husni</small></div>
+  </aside>
+
+  <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+  <div class="mobile-topbar">
+    <div style="display:flex;align-items:center;gap:8px"><div class="logo-icon">⚡</div><strong>Dashboard Guru</strong></div>
+    <button onclick="document.getElementById('sidebar').classList.toggle('open')" style="background:none;border:none;color:#fff;font-size:20px">☰</button>
+  </div>
+
+  <main class="main" id="main">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div>
+        <h1>Rekap Progres Siswa</h1>
+        <small>Progres materi, nilai kuis per materi, dan nilai ujian akhir — diperbarui otomatis.</small>
+      </div>
+      <button class="btn btn-outline refresh-btn" onclick="loadData()">⟳ Refresh</button>
+    </div>
+
+    <div class="stats" id="statBox"></div>
+
+    <div class="card">
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <input class="input" id="q" placeholder="Cari nama / NIS..." oninput="drawTable()" style="flex:1;min-width:180px">
+        <select class="input" id="fKelas" onchange="drawTable()" style="max-width:160px">
+          <option value="">Semua Kelas</option>
+          <option>X TITL 1</option>
+          <option>X TITL 2</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Siswa</th><th>Kelas</th><th>Materi</th>
+            <th>Kuis 1</th><th>Kuis 2</th><th>Kuis 3</th><th>Kuis 4</th>
+            <th>Ujian</th><th>Rata²</th>
+          </tr></thead>
+          <tbody id="tbody"><tr><td colspan="9">Memuat...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<?!= include('Components/Toast') ?>
+
+<script>
+/* ================= Dashboard Guru SPA =================
+   Gate login guru (username+password khusus).
+   Data: getGuruOverview() dari backend (GAS / Local).
+======================================================= */
+var BACKEND = (typeof google !== 'undefined' && google.script && google.script.run) ? 'gas' : 'local';
+var DATA = [];
+var guru = null;
+
+function apiCall(fnName, payload, cb){
+  if(BACKEND==='gas'){
+    google.script.run.withSuccessHandler(cb).withFailureHandler(function(){ cb(null); })[fnName](payload);
+  } else {
+    fetch('/api/'+fnName,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload||{})})
+      .then(function(r){return r.json()}).then(cb).catch(function(){ cb(null); });
+  }
+}
+
+/* ---------- GATE ---------- */
+function showGate(){
+  document.getElementById('gateLogin').style.display='flex';
+  document.getElementById('guruApp').style.display='none';
+}
+function showApp(){
+  document.getElementById('gateLogin').style.display='none';
+  document.getElementById('guruApp').style.display='flex';
+  document.getElementById('sbGuru').textContent = (guru?guru.nama:'Guru')+' • Guru';
+  loadData();
+}
+function gateLogin(ev){
+  ev.preventDefault();
+  var u = document.getElementById('gUser').value.trim();
+  var p = document.getElementById('gPass').value;
+  var msg = document.getElementById('gateMsg');
+  msg.style.display='none';
+  var btn = document.getElementById('gBtn'); btn.disabled=true; btn.textContent='Memeriksa...';
+  // GAS: login(nis, password) butuh 2 argumen posisional. Local: /api/login pakai payload.
+  var cb = function(res){
+    btn.disabled=false; btn.textContent='Masuk Dashboard';
+    if(res && res.success && ['guru','admin'].indexOf(String(res.user.role).toLowerCase())!==-1){
+      guru = res.user;
+      localStorage.setItem('user', JSON.stringify(guru));
+      localStorage.setItem('nis', guru.nis);
+      showToast('Selamat datang, '+guru.nama+'!','success');
+      showApp();
+    } else if(res && res.success){
+      msg.style.display='block'; msg.style.background='#fdeef0'; msg.style.color='#a12a3a';
+      msg.textContent='Akun ini bukan akun guru.';
+    } else {
+      msg.style.display='block'; msg.style.background='#fdeef0'; msg.style.color='#a12a3a';
+      msg.textContent=(res&&res.message)?res.message:'Login gagal. Periksa username/password.';
+    }
+  };
+  if(BACKEND==='gas'){
+    google.script.run.withSuccessHandler(cb).withFailureHandler(function(){ cb(null); }).login(u, p);
+  } else {
+    apiCall('login', {nis:u, password:p}, cb);
+  }
+}
+function guruLogout(){
+  localStorage.removeItem('user'); localStorage.removeItem('nis');
+  if(BACKEND==='gas' && guru){ google.script.run.logout(guru.nis); }
+  guru=null; showGate();
+}
+
+/* ---------- DATA ---------- */
+function loadData(){
+  apiCall('getGuruOverview', {}, function(res){
+    if(res && res.success && res.data){
+      DATA = res.data;
+      drawStats(); drawTable();
+    } else {
+      document.getElementById('tbody').innerHTML = '<tr><td colspan="9">Gagal memuat data. Coba Refresh.</td></tr>';
+      showToast('Gagal memuat data rekap','error');
+    }
+  });
+}
+function avg(arr){
+  var v = arr.filter(function(x){return x!==null && x!==undefined && x!=='';});
+  if(!v.length) return null;
+  return Math.round(v.reduce(function(a,b){return a+Number(b);},0)/v.length);
+}
+function drawStats(){
+  var total = DATA.length;
+  var doneUjian = DATA.filter(function(d){return d.ujian!==null;}).length;
+  var avgKuis = avg(DATA.map(function(d){return d.rata_kuis;}));
+  var avgUjian = avg(DATA.map(function(d){return d.ujian;}));
+  document.getElementById('statBox').innerHTML =
+    '<div class="stat-card"><div class="stat-number">'+total+'</div><div class="stat-label">Siswa terdaftar</div><div class="stat-bar"><div class="stat-bar-fill" style="width:'+(total?100:0)+'%"></div></div></div>'
+    + '<div class="stat-card"><div class="stat-number">'+doneUjian+(total?'/'+total:'')+'</div><div class="stat-label">Selesai ujian akhir</div><div class="stat-bar"><div class="stat-bar-fill" style="width:'+(total?doneUjian/total*100:0)+'%"></div></div></div>'
+    + '<div class="stat-card"><div class="stat-number">'+(avgKuis===null?'—':avgKuis)+'</div><div class="stat-label">Rata-rata kuis kelas</div><div class="stat-bar"><div class="stat-bar-fill" style="width:'+(avgKuis||0)+'%"></div></div></div>'
+    + '<div class="stat-card"><div class="stat-number">'+(avgUjian===null?'—':avgUjian)+'</div><div class="stat-label">Rata-rata ujian</div><div class="stat-bar"><div class="stat-bar-fill" style="width:'+(avgUjian||0)+'%"></div></div></div>';
+}
+function drawTable(){
+  var q = (document.getElementById('q').value||'').toLowerCase();
+  var fk = document.getElementById('fKelas').value;
+  var rows = DATA.filter(function(d){
+    var okQ = !q || (d.nama||'').toLowerCase().indexOf(q)!==-1 || (d.nis||'').toLowerCase().indexOf(q)!==-1;
+    var okK = !fk || d.kelas===fk;
+    return okQ && okK;
+  });
+  var tb = document.getElementById('tbody');
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="9" class="tbl-nil">Tidak ada data.</td></tr>'; return; }
+  tb.innerHTML = rows.map(function(d){
+    var kuisCell = function(v,passed){
+      if(v===null) return '<td class="tbl-nil">—</td>';
+      return '<td class="tbl-score" style="color:'+(passed?'var(--primary)':'var(--accent)')+'">'+v+'</td>';
+    };
+    return '<tr>'
+      + '<td><strong>'+d.nama+'</strong><br><small class="tbl-nil">NIS '+d.nis+'</small></td>'
+      + '<td><span class="badge-kelas">'+d.kelas+'</span></td>'
+      + '<td>'+(d.materi_selesai)+'/4</td>'
+      + kuisCell(d.kuis1,d.kuis1_passed) + kuisCell(d.kuis2,d.kuis2_passed)
+      + kuisCell(d.kuis3,d.kuis3_passed) + kuisCell(d.kuis4,d.kuis4_passed)
+      + (d.ujian===null?'<td class="tbl-nil">—</td>':'<td class="tbl-score">'+d.ujian+'</td>')
+      + '<td>'+(d.rata_kuis===null?'<span class="tbl-nil">—</span>':'<strong>'+d.rata_kuis+'</strong>')+'</td>'
+      + '</tr>';
+  }).join('');
+}
+function exportCsv(){
+  var head='nis,nama,kelas,materi_selesai,kuis1,kuis2,kuis3,kuis4,ujian,rata_kuis';
+  var lines=[head];
+  DATA.forEach(function(d){
+    lines.push([d.nis,'"'+String(d.nama).replace(/"/g,'""')+'"',d.kelas,d.materi_selesai,
+      d.kuis1===null?'':d.kuis1, d.kuis2===null?'':d.kuis2, d.kuis3===null?'':d.kuis3, d.kuis4===null?'':d.kuis4,
+      d.ujian===null?'':d.ujian, d.rata_kuis===null?'':d.rata_kuis].join(','));
+  });
+  var blob = new Blob([lines.join('\n')],{type:'text/csv'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'rekap_weblog_ddk.csv';
+  a.click();
+}
+
+/* ---------- INIT ---------- */
+(function(){
+  try{ guru = JSON.parse(localStorage.getItem('user')||'null'); }catch(e){ guru=null; }
+  if(guru && ['guru','admin'].indexOf(String(guru.role||'').toLowerCase())!==-1){
+    showApp();
+  } else {
+    guru=null; showGate();
+  }
+})();
+</script>
+</body>
+</html>

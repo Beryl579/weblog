@@ -1,0 +1,113 @@
+<button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+<div class="mobile-topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="logo-icon"><span></span><span></span><span></span><span></span></div>
+    <strong>Kelas DDK Mandiri</strong>
+  </div>
+  <button onclick="document.getElementById('sidebar').classList.toggle('open')" style="background:none;border:none;color:#fff;font-size:20px">☰</button>
+</div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo-icon"><span></span><span></span><span></span><span></span></div>
+    <div>
+      <div class="sidebar-title">Weblog DDK</div>
+      <div class="sidebar-subtitle">Kelas DDK Mandiri</div>
+    </div>
+  </div>
+
+  <div class="sidebar-section">MULAI</div>
+  <nav class="sidebar-nav">
+    <a href="?page=dashboard&nis=<?= currentNis || '' ?>" data-page="dashboard"><span class="icon">🏠</span> Dashboard</a>
+  </nav>
+
+  <div class="sidebar-section">MODUL MATERI</div>
+  <nav class="sidebar-nav" id="sidebarMateri">
+    <a href="?page=materi&nis=<?= currentNis || '' ?>" data-page="materi"><span class="icon">①</span> 1 · Proses Perencanaan Instalasi</a>
+    <a href="?page=materi&nis=<?= currentNis || '' ?>" data-page="materi"><span class="icon">②</span> 2 · Pembuatan Panel</a>
+    <a href="?page=materi&nis=<?= currentNis || '' ?>" data-page="materi"><span class="icon">③</span> 3 · Pemeliharaan & Perawatan</a>
+    <a href="?page=materi&nis=<?= currentNis || '' ?>" data-page="materi"><span class="icon">④</span> 4 · Pengelolaan SDM</a>
+    <!-- Dinamis via JS: akan diisi 4 Topik -->
+  </nav>
+
+  <div class="sidebar-section">PRAKTIK</div>
+  <nav class="sidebar-nav">
+    <a href="?page=pbl&nis=<?= currentNis || '' ?>" data-page="pbl"><span class="icon">🧩</span> PBL 5 Fase</a>
+    <a href="?page=quiz&nis=<?= currentNis || '' ?>&type=pretest" data-page="quiz"><span class="icon">📝</span> Pretest</a>
+    <a href="?page=quiz&nis=<?= currentNis || '' ?>&type=posttest" data-page="quiz"><span class="icon">✅</span> Posttest</a>
+    <a href="?page=angket&nis=<?= currentNis || '' ?>" data-page="angket"><span class="icon">💡</span> Angket Motivasi</a>
+    <a href="?page=diskusi&nis=<?= currentNis || '' ?>" data-page="diskusi"><span class="icon">💬</span> Diskusi</a>
+    <a href="?page=tugas&nis=<?= currentNis || '' ?>" data-page="tugas"><span class="icon">📤</span> Tugas PBL</a>
+  </nav>
+
+  <div class="sidebar-section">ALAT BANTU</div>
+  <nav class="sidebar-nav">
+    <a href="?page=guru&nis=<?= currentNis || '' ?>" data-page="guru" id="navGuru" style="display:none"><span class="icon">👨‍🏫</span> Dashboard Guru</a>
+    <a href="#" onclick="logout();return false"><span class="icon">↪</span> Logout</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <small id="sidebarUser">Memuat...</small><br>
+    <small style="opacity:0.7">Quasi Experiment • KKTP 75</small>
+  </div>
+</aside>
+
+<script>
+(function(){
+  var nis = "<?= currentNis || '' ?>";
+  if(nis) localStorage.setItem('nis', nis);
+  else nis = localStorage.getItem('nis') || '';
+  var page = new URLSearchParams(location.search).get('page') || 'dashboard';
+  var type = new URLSearchParams(location.search).get('type') || '';
+  document.querySelectorAll('.sidebar-nav a').forEach(function(a){
+    var dp=a.getAttribute('data-page');
+    var href=a.getAttribute('href')||'';
+    // aktifkan berdasarkan page+type untuk quiz
+    if(dp===page){
+      // untuk quiz bedakan pre/post via href
+      if(page==='quiz'){
+        if(href.includes('type='+type)) a.classList.add('active');
+      } else {
+        a.classList.add('active');
+      }
+    }
+  });
+  try{
+    var user = <?= currentUser ? JSON.stringify(currentUser) : 'null' ?>;
+    if(user){
+      document.getElementById('sidebarUser').textContent = user.nama + ' • ' + user.kelas + ' • ' + user.role;
+      if(['guru','admin'].indexOf((user.role||'').toLowerCase())!==-1){
+        document.getElementById('navGuru').style.display='flex';
+      }
+    } else if(nis){
+      document.getElementById('sidebarUser').textContent = 'NIS '+nis;
+    }
+  }catch(e){}
+  // load 4 materi untuk sidebar dinamis (opsional)
+  try{
+    google.script.run.withSuccessHandler(function(res){
+      if(res.success){
+        var nav=document.getElementById('sidebarMateri');
+        nav.innerHTML='';
+        res.data.forEach(function(m){
+          var a=document.createElement('a');
+          a.href='?page=materidetail&nis='+encodeURIComponent(nis)+'&id='+m.id;
+          a.setAttribute('data-page','materi');
+          a.innerHTML='<span class="icon">'+m.topik+'</span> '+m.topik+' · '+m.judul.substring(0,22);
+          if(page==='materi' || page==='materidetail') {
+            // highlight jika id sama
+            var currId=new URLSearchParams(location.search).get('id');
+            if(String(currId)===String(m.id)) a.classList.add('active');
+          }
+          nav.appendChild(a);
+        });
+      }
+    }).getMaterials();
+  }catch(e){}
+})();
+function logout(){
+  var nis = localStorage.getItem('nis');
+  if(!nis) { location.href='?page=login'; return; }
+  google.script.run.withSuccessHandler(function(){ localStorage.removeItem('nis'); location.href='?page=login'; }).logout(nis);
+}
+</script>

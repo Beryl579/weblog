@@ -1,0 +1,59 @@
+# ============================================================
+#  Weblog Pembelajaran Interaktif DDK — .gitignore
+#  Yang diabaikan hanya berkas runtime/privat. Seluruh kode
+#  aplikasi (Weblog-DDK/**, local/*.js, local/*.py) tetap ikut.
+# ============================================================
+
+# ---------- Data & runtime server lokal ----------
+# db.json adalah "database" JSON server lokal: berisi data siswa,
+# hash password, dan progres kuis. Dibuat otomatis oleh server
+# saat pertama dijalankan, jadi tidak perlu (dan tidak boleh) di-commit.
+local/db.json
+local/db.json.bak
+
+# Berkas unggahan/tugas siswa (dibuat otomatis oleh server)
+local/uploads/
+
+# Log server
+*.log
+
+# ---------- Dokumen privat / besar ----------
+# Proposal skripsi (2,8 MB, memuat nama & NIM). Hapus baris di bawah
+# kalau memang ingin ikut di-push.
+SKRIPSI*.pdf
+
+# ---------- Dependensi & cache ----------
+node_modules/
+.pnp/
+.pnp.js
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# ---------- Rahasia / konfigurasi deployment ----------
+.env
+.env.*
+!.env.example
+.clasp.json
+.clasprc.json
+
+# ---------- Editor & OS ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Alat Freebuff ----------
+.freebuff/
+
+# ---------- Sampah sementara ----------
+*.tmp
+*.orig
+~$*

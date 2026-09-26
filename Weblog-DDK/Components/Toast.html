@@ -1,0 +1,12 @@
+<div id="toast" class="toast"></div>
+<script>
+function showToast(msg, type){
+  var el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast show '+(type||'');
+  setTimeout(function(){ el.className='toast'; }, 3000);
+}
+function showLoading(on){
+  document.body.classList.toggle('loading', !!on);
+}
+</script>
