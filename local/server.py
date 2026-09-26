@@ -741,8 +741,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_error(404)
             return
 
-        if path_url == "/Styles/Main.css" or path_url == "/Styles/Main":
-            fp = os.path.join(ROOT, "Styles", "Main.css")
+        if path_url in ("/Styles/Main.css", "/Styles/Main", "/Styles/Main.html"):
+            # GAS tidak punya tipe berkas CSS -> CSS disimpan sebagai Styles/Main.html
+            fp = os.path.join(ROOT, "Styles", "Main.html")
             if os.path.exists(fp):
                 self.send_response(200)
                 self.send_header("Content-Type", "text/css")
@@ -985,7 +986,9 @@ def render_template(file_path, query):
         candidates.append(os.path.join(ROOT, inc + ".html"))
         candidates.append(os.path.join(ROOT, inc + ".css"))
         candidates.append(os.path.join(ROOT, "Components", os.path.basename(inc) + ".html"))
+        candidates.append(os.path.join(ROOT, "Styles", os.path.basename(inc) + ".html"))
         candidates.append(os.path.join(ROOT, "Styles", os.path.basename(inc) + ".css"))
+        candidates.append(os.path.join(ROOT, "Styles", "Main.html"))
         candidates.append(os.path.join(ROOT, "Styles", "Main.css"))
         for cand in candidates:
             if os.path.exists(cand):

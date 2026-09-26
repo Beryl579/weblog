@@ -89,14 +89,75 @@ node server.js
 - Data disimpan di `local/db.json` (sheet `progress` otomatis dibuat).
 - Backend REST di `/api/<fungsi>`; frontend memakai polyfill `google.script.run`.
 
-## Deploy ke Google Apps Script
+## Deploy ke Google Apps Script (GAS Web App)
 
-1. Buat Google Spreadsheet baru, buka **Extensions → Apps Script**.
-2. Copy semua file `.gs` dari folder `Weblog-DDK/` ke editor (Code.gs, DbService.gs, AuthService.gs, ProgressService.gs, dll).
-3. Copy file `.html` dari `Views/`, `Components/`, `Styles/` dengan nama file persis sama.
-4. Jalankan fungsi **`setupDatabase()`** sekali (buat 14 sheet + seed akun demo).
-5. **Deploy → New deployment → Web app** → Execute as: *Me* → Access: *Anyone*.
-6. Bagikan URL web app ke siswa. Selesai.
+Ini jalur deploy yang benar untuk aplikasi ini. Hasilnya berupa URL publik
+`https://script.google.com/macros/s/…/exec` yang bisa dibuka siswa tanpa akun Google.
+
+> **Kenapa bukan GitHub Pages?** GitHub Pages hanya menyajikan berkas statis dan tidak bisa
+> menjalankan program. Logika aplikasi ini ada di berkas `.gs` (butuh runtime Apps Script)
+> dan di `local/server.js` (butuh Node.js), jadi Pages tidak akan pernah bisa menjalankannya.
+
+### Sebelum mulai — satu hal yang mudah salah
+
+Apps Script hanya mengenal **dua** tipe berkas: *script* (`.gs`) dan *HTML* (`.html`).
+Tidak ada tipe berkas CSS. Karena itu design system disimpan sebagai
+**`Styles/Main.html`** (isinya tetap CSS murni) dan dipanggil dengan
+`<?!= include('Styles/Main') ?>` di dalam tag `<style>`. Jangan menggantinya menjadi
+`Styles/Main.css` — di GAS berkas itu tidak akan ditemukan dan seluruh halaman jadi tanpa gaya.
+
+### Cara A — pakai `clasp` (disarankan)
+
+Butuh Node.js.
+
+```bash
+npm install -g @google/clasp
+clasp login
+```
+
+Dari **root repo ini**:
+
+```bash
+# buat proyek Apps Script baru (web app) — sekali saja
+clasp create --type webapp --title "Weblog DDK" --rootDir Weblog-DDK
+
+# …atau, kalau proyek Apps Script-nya sudah ada:
+cp .clasp.json.example .clasp.json   # lalu isi scriptId dari URL editor
+clasp clone <SCRIPT_ID> --rootDir Weblog-DDK
+```
+
+`.clasp.json` berisi `scriptId` milik akun Anda, jadi sengaja **tidak** ikut ke Git
+(sudah ada di `.gitignore`); contohnya tersedia sebagai `.clasp.json.example`.
+
+```bash
+clasp push   # unggah semua .gs + .html ke Apps Script
+clasp open   # buka editor Apps Script
+```
+
+### Cara B — manual lewat editor Apps Script
+
+1. Buka <https://script.google.com> → **New project**.
+2. Untuk setiap berkas `.gs` di `Weblog-DDK/`: **File → New → Script**, beri nama persis sama
+   (`Code`, `DbService`, `AuthService`, `ProgressService`, `Setup`, `Utils`, …).
+3. Untuk setiap berkas `.html` di `Weblog-DDK/Views`, `Components`, dan `Styles`:
+   **File → New → HTML**, dan tulis namanya **beserta folder**, misal
+   `Views/Login`, `Views/DashboardSiswa`, `Components/Toast`, `Styles/Main`.
+   (Nama folder ditulis sebagai bagian dari nama berkas — Apps Script otomatis menampilkannya bertingkat.)
+4. Aktifkan **Project Settings → centang _Show `appsscript.json` manifest file_**, lalu ganti
+   isinya dengan `Weblog-DDK/appsscript.json`.
+
+### Langkah terakhir (sama untuk kedua cara)
+
+5. Di editor, pilih fungsi **`setupDatabase`** → **Run** → izinkan akses saat diminta.
+   Fungsi ini membuat 14 sheet + mengisi akun demo. Kalau script-nya belum terikat ke
+   Spreadsheet mana pun, `setupDatabase()` akan **membuat spreadsheet baru otomatis**
+   (`DB_Weblog_DDK_SMK_TR2`) dan menyimpan ID-nya di Script Properties — jadi tidak wajib
+   membuat Spreadsheet dulu.
+6. **Deploy → New deployment → Web app** → *Execute as:* **Me** → *Who has access:* **Anyone**.
+7. Buka URL `…/exec`-nya. Login pakai akun demo di tabel atas, lalu bagikan ke siswa.
+
+Setiap kali kode diubah: `clasp push`, lalu **Deploy → Manage deployments → Edit (✏️) → Version: New version → Deploy**
+supaya URL yang sama memakai kode terbaru.
 
 ## Backend (API)
 
@@ -123,5 +184,5 @@ Weblog-DDK/
 │   ├── DashboardSiswa.html ← SPA siswa (materi + kuis + ujian)
 │   └── DashboardGuru.html  ← SPA guru (login gate + rekap)
 ├── Components/Toast.html
-└── Styles/Main.css        ← Design system hijau (sidebar gelap + konten terang)
+└── Styles/Main.html       ← Design system (CSS murni; ekstensi .html karena batasan GAS)
 ```

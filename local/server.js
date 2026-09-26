@@ -786,9 +786,9 @@ function serveStatic(req,res){
       return true;
     }
   }
-  // /Styles/Main.css
-  if(pathname==='/Styles/Main.css' || pathname==='/Styles/Main'){
-    const fp=path.join(ROOT,'Styles','Main.css');
+  // /Styles/Main — berkasnya bernama Main.html (GAS tidak punya tipe berkas CSS)
+  if(pathname==='/Styles/Main.css' || pathname==='/Styles/Main' || pathname==='/Styles/Main.html'){
+    const fp=path.join(ROOT,'Styles','Main.html');
     if(fs.existsSync(fp)){
       res.writeHead(200,{'Content-Type':'text/css'});
       res.end(fs.readFileSync(fp,'utf8'));
@@ -806,11 +806,12 @@ function renderGASTemplate(filePath, query){
   // 1) include
   content=content.replace(/<\?!= *include\(['"]([^'"]+)['"]\) *\?>/g, (m, inc)=>{
     let incPath=inc;
-    // Handle Styles/Main -> Styles/Main.css
+    // Handle Styles/Main -> Styles/Main.html (dan Views/X -> Views/X.html)
     let full=path.join(ROOT, incPath);
     if(!incPath.includes('.')){ // no extension
       if(fs.existsSync(full+'.html')) full=full+'.html';
       else if(fs.existsSync(full+'.css')) full=full+'.css';
+      else if(fs.existsSync(path.join(ROOT,'Styles',incPath.split('/').pop()+'.html'))) full=path.join(ROOT,'Styles',incPath.split('/').pop()+'.html');
       else if(fs.existsSync(path.join(ROOT,'Styles',incPath.split('/').pop()+'.css'))) full=path.join(ROOT,'Styles',incPath.split('/').pop()+'.css');
       else if(fs.existsSync(path.join(ROOT,'Components',incPath.split('/').pop()+'.html'))) full=path.join(ROOT,'Components',incPath.split('/').pop()+'.html');
     } else {
@@ -824,6 +825,7 @@ function renderGASTemplate(filePath, query){
     if(!fs.existsSync(full)){
       const alt2=path.join(ROOT,'Styles',path.basename(incPath));
       if(fs.existsSync(alt2)) full=alt2;
+      if(fs.existsSync(alt2+'.html')) full=alt2+'.html';
       if(fs.existsSync(alt2+'.css')) full=alt2+'.css';
     }
     if(fs.existsSync(full)) return fs.readFileSync(full,'utf8');
