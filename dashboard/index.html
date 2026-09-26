@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weblog DDK — Siswa</title>
+<style>/* Main.html — Weblog DDK — design system (sidebar gelap + konten terang).
+   Catatan: berkas ini berekstensi .html, BUKAN .css, karena Google Apps Script
+   hanya mengenal dua tipe berkas: script (.gs) dan HTML (.html) — tidak ada
+   tipe berkas CSS. Isinya tetap CSS murni dan disisipkan lewat
+    di dalam tag <style>. */
+:root{
+  /* ExcelLab palette - diadaptasi untuk DDK */
+  --sidebar-bg:#0f2e1c;
+  --sidebar-hover:#143626;
+  --sidebar-active:#1a3d2a;
+  --sidebar-border:#b8e05a; /* lime accent left border */
+  --primary:#166534; /* green utama */
+  --primary-dark:#0f2e1c;
+  --primary-light:#e6f3e6;
+  --accent:#E94560;
+  --accent-lime:#c6f277;
+  --dark:#0f2417;
+  --success:#1DB954;
+  --warning:#E6A817;
+  --bg:#f4f8f4; /* light greenish - sama seperti ExcelLab */
+  --card:#FFFFFF;
+  --muted:#6b7c6b;
+  --muted2:#8a9a8a;
+  --border:#e2e8e2;
+  --border-light:#eef4ee;
+  --radius:16px;
+  --radius-sm:10px;
+  --shadow:0 4px 24px rgba(15,46,28,0.06);
+  --shadow-card:0 2px 12px rgba(15,46,28,0.08);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Segoe UI',system-ui,-apple-system,Roboto,Inter,Arial,sans-serif;
+  font-size:14px; line-height:1.6; color:var(--dark);
+  background:var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+h1{font-size:22px;font-weight:700;color:var(--dark);line-height:1.3}
+h2{font-size:18px;font-weight:600;color:var(--dark)}
+small{font-size:12px;color:var(--muted)}
+a{color:var(--primary);text-decoration:none}
+a:hover{text-decoration:underline}
+.container{max-width:1100px;margin:0 auto;padding:0 16px}
+.card{
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow-card);
+  padding:16px; margin-bottom:16px;
+}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:6px; padding:10px 16px; border-radius:999px; border:none;
+  font-size:14px;font-weight:600; cursor:pointer; transition:0.15s;
+  text-decoration:none;
+}
+.btn-primary{background:var(--primary-dark);color:#fff; border:1px solid var(--primary-dark)}
+.btn-primary:hover{background:#0f1f14; transform:translateY(-1px)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-outline{background:#fff;border:1px solid #166534;color:#166534}
+.btn-outline:hover{background:var(--primary-light)}
+.btn-success{background:var(--success);color:#fff}
+.btn:disabled{opacity:0.6;cursor:not-allowed}
+.input{
+  width:100%; padding:10px 12px; border:1px solid var(--border);
+  border-radius:10px; font-size:14px; background:#fff;
+}
+.input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(22,101,52,0.12)}
+.label{font-size:12px;font-weight:600;color:var(--dark);margin-bottom:4px;display:block}
+.form-group{margin-bottom:12px}
+.error{color:var(--accent);font-size:12px;margin-top:4px}
+.success{color:var(--success);font-size:12px}
+.badge{padding:4px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.badge-success{background:#e6f7ec;color:#0a7a2e}
+.badge-warning{background:#fff3cd;color:#856404}
+.badge-danger{background:#fde8eb;color:#a12a3a}
+.badge-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#e6f3e6; color:#166534; border:1px solid #c8e6c9;
+  padding:6px 12px; border-radius:999px; font-size:11px; font-weight:600; letter-spacing:0.2px;
+}
+.progress{height:8px;background:#e9ecef;border-radius:999px;overflow:hidden}
+.progress-bar{height:100%;transition:width 0.3s}
+.progress-bar.green{background:var(--primary)}
+.progress-bar.yellow{background:var(--warning)}
+
+/* ===== ExcelLab Layout ===== */
+.app{
+  display:flex; min-height:100vh;
+}
+.sidebar{
+  width:260px; background:var(--sidebar-bg); color:#d1e7d1;
+  display:flex; flex-direction:column; flex-shrink:0;
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+  border-right:1px solid #1a3d2a;
+}
+.sidebar-header{
+  padding:16px 16px 12px; display:flex; align-items:center; gap:10px;
+  border-bottom:1px solid #1a3d2a;
+}
+/* Logo DDK: petir dalam kotak — sengaja BUKAN grid 4 kotak (itu ciri template Excel) */
+.logo-icon{
+  width:36px;height:36px;border-radius:11px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(140deg,#1f7a45,#0d2c1b);
+  box-shadow:inset 0 0 0 1px rgba(198,242,119,0.35);
+  font-size:19px;line-height:1;color:var(--accent-lime);
+}
+.sidebar-title{font-weight:700;color:#fff;font-size:15px;line-height:1}
+.sidebar-subtitle{font-size:10px;color:#8a9a8a; letter-spacing:0.3px}
+.sidebar-section{
+  padding:14px 12px 6px; font-size:10px; font-weight:700; letter-spacing:0.8px;
+  color:#6b9a6b; text-transform:uppercase;
+}
+.sidebar-nav{display:flex;flex-direction:column; gap:2px; padding:0 8px}
+.sidebar-nav a{
+  display:flex; align-items:center; gap:8px;
+  padding:8px 10px; border-radius:10px;
+  color:#b9d1b9; font-size:13px; font-weight:500; text-decoration:none;
+  border-left:3px solid transparent;
+  transition:0.15s;
+}
+.sidebar-nav a:hover{background:var(--sidebar-hover); color:#fff; text-decoration:none}
+.sidebar-nav a.active{
+  background:var(--sidebar-active); color:#fff;
+  border-left-color:var(--sidebar-border);
+  font-weight:600;
+}
+.sidebar-nav a .icon{width:16px; text-align:center; font-size:13px}
+.sidebar-footer{
+  margin-top:auto; padding:12px; border-top:1px solid #1a3d2a;
+}
+.sidebar-footer small{color:#6b9a6b; font-size:11px}
+
+.main{
+  flex:1; background:var(--bg); min-width:0;
+  padding:24px 28px;
+}
+@media(max-width:900px){
+  .app{flex-direction:column}
+  .sidebar{width:100%; height:auto; position:relative; display:none}
+  .sidebar.open{display:flex}
+  .main{padding:16px}
+  .hamburger{display:flex !important}
+}
+.hamburger{
+  display:none; align-items:center; justify-content:center;
+  width:40px;height:40px; border-radius:10px; border:1px solid var(--border);
+  background:#fff; color:var(--dark); font-size:18px; cursor:pointer;
+  position:fixed; top:12px; left:12px; z-index:60; box-shadow:var(--shadow-card);
+}
+.mobile-topbar{
+  display:none; background:var(--sidebar-bg); color:#fff; padding:10px 16px;
+  align-items:center; justify-content:space-between;
+}
+@media(max-width:900px){
+  .mobile-topbar{display:flex}
+}
+
+/* Hero ala ExcelLab */
+.hero{
+  display:grid; grid-template-columns:1.1fr 0.9fr; gap:24px; align-items:center;
+  margin-bottom:20px;
+}
+@media(max-width:900px){ .hero{grid-template-columns:1fr} }
+.hero-title{
+  font-size:42px; font-weight:800; line-height:1.05; color:#0f2417; letter-spacing:-0.5px;
+}
+.hero-title span{color:var(--primary); font-weight:800}
+@media(max-width:600px){ .hero-title{font-size:28px} }
+.hero-desc{
+  margin-top:10px; color:#5a6b5a; font-size:14px; line-height:1.6; max-width:520px;
+}
+.hero-desc strong{color:#0f2417; font-weight:700}
+.hero-cta{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px}
+.btn-hero-primary{
+  background:var(--primary-dark); color:#fff; padding:12px 20px; border-radius:999px;
+  font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:8px;
+  border:none; cursor:pointer; box-shadow:0 4px 12px rgba(15,46,28,0.15);
+}
+.btn-hero-primary:hover{background:#0a1f12}
+.btn-hero-outline{
+  background:#fff; color:var(--primary); padding:12px 20px; border-radius:999px;
+  font-weight:600; font-size:14px; border:1px solid #166534; display:inline-flex; align-items:center; gap:6px;
+}
+.btn-hero-outline:hover{background:var(--primary-light)}
+
+/* ===== Panel Distribusi Progres (pengganti kartu spreadsheet Excel) =====
+   Metafora DDK: busbar + MCB (Q1..Q5). Breaker menyala = materi/ujian lulus. */
+.panel{
+  background:#fff; border:1px solid var(--border); border-radius:16px;
+  overflow:hidden; box-shadow:var(--shadow-card);
+}
+.panel-head{
+  background:var(--dark); color:#fff; padding:11px 14px;
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.panel-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
+.panel-title .bolt{color:var(--accent-lime);font-size:14px}
+.panel-tag{
+  font-size:10px; font-weight:800; letter-spacing:0.9px; text-transform:uppercase;
+  color:#8fd6a8; border:1px solid rgba(143,214,168,0.4); border-radius:999px; padding:2px 9px;
+}
+.panel-body{padding:14px}
+.busbar{
+  height:7px; border-radius:999px; margin-bottom:12px;
+  background:linear-gradient(90deg,#f0b429 0%,#c6f277 55%,#7fc79b 100%);
+  box-shadow:0 1px 0 rgba(15,46,28,0.12) inset;
+}
+.breaker{
+  display:flex; align-items:center; gap:10px;
+  padding:9px 11px; margin-bottom:7px;
+  border:1px solid var(--border-light); border-radius:12px; background:#fbfdfb;
+}
+.breaker:last-child{margin-bottom:0}
+.breaker .lamp{width:9px;height:9px;border-radius:50%;background:#cdd8cd;flex-shrink:0}
+.breaker .tag{font-size:10px;font-weight:800;color:var(--muted);min-width:24px;letter-spacing:0.4px}
+.breaker .name{font-size:13px;font-weight:600;color:var(--dark)}
+.breaker .val{margin-left:auto;font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums}
+.breaker .state{font-size:10px;font-weight:800;letter-spacing:0.4px;color:var(--muted2)}
+.breaker.on{border-color:#cdebd7;background:#f2fbf5}
+.breaker.on .lamp{background:var(--success);box-shadow:0 0 0 4px rgba(29,185,84,0.15)}
+.breaker.on .val{color:var(--primary)}
+.breaker.on .state{color:#0a7a2e}
+.breaker.off{background:#f7f9f7;border-style:dashed}
+.breaker.off .name{color:var(--muted2)}
+.breaker.off .state{color:#a8b3a8}
+.panel-foot{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:12px; padding-top:11px; border-top:1px dashed var(--border);
+}
+.panel-foot .label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px}
+.panel-foot .readout{
+  font-size:20px;font-weight:800;color:var(--primary);
+  font-variant-numeric:tabular-nums;
+}
+/* Kartu info bergaya plat nama peralatan (untuk halaman ujian) */
+.kv-row{
+  display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  padding:9px 0; border-bottom:1px dashed var(--border-light);
+}
+.kv-row:last-child{border-bottom:none}
+.kv-label{font-size:12px;color:var(--muted);font-weight:600}
+.kv-val{font-size:14px;font-weight:800;color:var(--dark);font-variant-numeric:tabular-nums}
+
+/* Stat cards ala ExcelLab */
+.stats{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin:18px 0;
+}
+@media(max-width:700px){ .stats{grid-template-columns:1fr} }
+.stat-card{
+  background:#fff; border:1px solid var(--border); border-radius:16px; padding:18px; box-shadow:var(--shadow-card);
+}
+.stat-number{font-size:28px; font-weight:800; color:var(--primary); line-height:1}
+.stat-label{font-size:11px; color:var(--muted); margin-top:2px; font-weight:500}
+.stat-bar{height:6px; background:#eef4ee; border-radius:999px; margin-top:12px; overflow:hidden}
+.stat-bar-fill{height:100%; background:var(--primary); border-radius:999px}
+
+/* Section why */
+.section-why{
+  margin-top:16px; background:#fff; border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:var(--shadow-card);
+}
+.section-why h2{display:flex; align-items:center; gap:8px; font-size:16px; font-weight:700}
+.section-why h2::before{content:''; width:4px;height:18px; background:var(--primary); border-radius:999px; display:block}
+
+/* Legacy navbar fallback (untuk halaman tanpa sidebar) */
+.navbar{
+  position:sticky;top:0;z-index:50;
+  background:var(--primary); color:#fff;
+  padding:10px 0; box-shadow:0 2px 8px rgba(0,0,0,0.15);
+}
+.navbar .container{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.nav-links{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.nav-links a{color:#fff;padding:6px 10px;border-radius:6px;font-size:13px;font-weight:500}
+.nav-links a:hover, .nav-links a.active{background:rgba(255,255,255,0.15);text-decoration:none}
+
+/* Grid legacy */
+.grid{display:grid;gap:16px}
+.grid-2{grid-template-columns:repeat(2,1fr)}
+.grid-3{grid-template-columns:repeat(3,1fr)}
+.grid-4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:768px){ .grid-2,.grid-3,.grid-4{grid-template-columns:1fr} }
+.table-wrap{overflow-x:auto;background:#fff;border-radius:var(--radius);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+th{background:#f6fbf6;font-weight:600;user-select:none}
+tbody tr:hover{background:#fafdfa}
+.toast{
+  position:fixed;top:16px;right:16px;z-index:9999;
+  background:var(--dark);color:#fff;padding:12px 16px;border-radius:10px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.2);font-size:13px;
+  transform:translateX(120%);transition:transform 0.25s;
+}
+.toast.show{transform:translateX(0)}
+.toast.success{background:var(--primary)}
+.toast.error{background:var(--accent)}
+.likert{display:flex;gap:8px;flex-wrap:wrap}
+.likert label{
+  flex:1;min-width:60px;text-align:center;
+  border:1px solid var(--border);border-radius:10px;padding:10px 6px;
+  cursor:pointer;background:#fff;font-weight:600;transition:0.15s
+}
+.likert input{display:none}
+.likert label:has(input:checked){background:var(--primary);color:#fff;border-color:var(--primary)}
+.comment{border-left:3px solid var(--border);padding-left:12px;margin-bottom:12px}
+.comment .avatar{
+  width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;
+  display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:13px
+}
+.quiz-nav{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.quiz-nav button{padding:8px;border-radius:8px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:12px}
+.quiz-nav button.answered{background:var(--success);color:#fff;border-color:var(--success)}
+.quiz-nav button.current{border-color:var(--primary);background:var(--primary);color:#fff}
+.footer{background:#0f2417;color:#c8d8c8;padding:20px 0;margin-top:32px;font-size:12px}
+.footer a{color:#c6f277;text-decoration:underline}
+.loading{opacity:0.6;pointer-events:none;position:relative}
+.loading::after{content:'Memuat...';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.7);border-radius:var(--radius);font-weight:600}
+.fab{
+  position:fixed; bottom:20px; right:20px; width:56px;height:56px; border-radius:50%;
+  background:var(--primary-dark); color:#fff; display:flex; align-items:center; justify-content:center;
+  font-size:22px; box-shadow:0 8px 20px rgba(15,46,28,0.25); cursor:pointer; border:3px solid #c6f277; z-index:50;
+}
+.fab:hover{transform:scale(1.05)}
+</style>
+<style>
+  .materi-hero-card{padding:0;overflow:hidden;margin-top:12px}
+  .materi-banner{width:100%;height:240px;object-fit:cover;object-position:center;display:block;background:#eef4ee}
+  .materi-hero-body{padding:16px}
+  @media(max-width:600px){.materi-banner{height:170px}}
+  .img-credit{font-size:10px;color:var(--muted);margin-top:10px}
+  .materi-list{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:14px}
+  @media(max-width:800px){.materi-list{grid-template-columns:1fr}}
+  .materi-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:8px;position:relative}
+  .materi-card.locked{opacity:0.65}
+  .materi-card h3{font-size:15px;font-weight:700}
+  .materi-num{width:34px;height:34px;border-radius:10px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800}
+  .materi-card.done .materi-num{background:var(--success);color:#fff}
+  .lock-tag{position:absolute;top:12px;right:12px;font-size:11px;background:#fff3cd;color:#856404;border-radius:999px;padding:3px 10px;font-weight:700}
+  .done-tag{position:absolute;top:12px;right:12px;font-size:11px;background:#e6f7ec;color:#0a7a2e;border-radius:999px;padding:3px 10px;font-weight:700}
+  .materi-content h2{margin:18px 0 6px}
+  .materi-content h3{margin:20px 0 5px;color:var(--primary-dark);font-size:15px}
+  .materi-content p{margin:6px 0;color:#3d4d3d;font-size:14px;line-height:1.6}
+  .materi-content ul{margin:6px 0 6px 20px;color:#3d4d3d;font-size:14px;line-height:1.6}
+  .materi-content li{margin:4px 0}
+  .blk-note{background:#eef6ff;border:1px solid #cfe3fb;border-left:4px solid #3b82f6;border-radius:12px;padding:11px 14px;margin:10px 0;font-size:14px;color:#26405e}
+  .blk-note strong{display:block;margin-bottom:3px;color:#1e40af}
+  .blk-case{background:#fff8ec;border:1px solid #f4dfae;border-left:4px solid var(--accent);border-radius:12px;padding:11px 14px;margin:10px 0;font-size:14px;color:#5c4708}
+  .blk-case strong{display:block;margin-bottom:3px;color:#8a5a00}
+  .blk-formula{background:#f4f7f4;border:1px dashed var(--border);border-radius:10px;padding:10px 14px;margin:10px 0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#2f3d2f;white-space:pre-wrap;overflow-x:auto}
+  .comp-table th,.comp-table td{white-space:normal}
+  .comp-table{font-size:13px}
+  .comp-table th{font-size:12px;background:#f6fbf6}
+  .glossary{margin-top:16px;border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .glossary-title{background:#f0f8f0;padding:10px 14px;font-weight:700;font-size:13px;border-bottom:1px solid var(--border);color:var(--primary-dark)}
+  .glossary-row{display:flex;gap:12px;padding:9px 14px;border-bottom:1px dashed var(--border-light);font-size:13px}
+  .glossary-row:last-child{border-bottom:none}
+  .glossary-term{font-weight:800;color:var(--primary-dark);min-width:120px;flex-shrink:0}
+  .glossary-arti{color:#3d4d3d}
+  @media(max-width:600px){.glossary-row{flex-direction:column;gap:2px}.glossary-term{min-width:0}}
+  .rangkuman{background:#f0f8f0;border:1px solid #d6ecd6;border-radius:14px;padding:14px;margin-top:14px;font-size:14px;line-height:1.6}
+  .quiz-page{max-width:860px}
+  .quiz-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .quiz-top-title{font-weight:700;font-size:15px;color:var(--dark)}
+  .quiz-exit{font-size:13px;flex-shrink:0}
+  .quiz-card-full{padding:18px}
+  .quiz-q{font-size:16px;font-weight:600;margin:2px 0 14px;line-height:1.5}
+  .quiz-nav-wrap{padding:14px}
+  .quiz-nav-title{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px}
+  .quiz-answered-bar{font-variant-numeric:tabular-nums;color:var(--primary)}
+  .opt-key{width:24px;height:24px;border-radius:8px;background:var(--primary-light);color:var(--primary);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
+  .quiz-opts button.sel .opt-key{background:rgba(255,255,255,0.28);color:#fff}
+  .quiz-foot{padding-top:2px}
+  .quiz-result{max-width:680px;margin:0 auto;text-align:center;padding:24px}
+  .quiz-review{text-align:left;margin-top:18px;border-top:1px dashed var(--border);padding-top:14px}
+  .quiz-review h3{font-size:14px;font-weight:700;margin-bottom:10px}
+  .quiz-review-item{background:#fdf7f7;border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:9px 12px;margin-bottom:10px;font-size:13px;line-height:1.5}
+  .quiz-review-why{color:var(--muted);margin-top:3px}
+  .quiz-opts{display:grid;gap:8px}
+  .quiz-opts button{display:flex;align-items:center;gap:10px;text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:14px;line-height:1.45;transition:0.12s}
+  .quiz-opts button:hover{border-color:var(--primary);background:var(--primary-light)}
+  .quiz-opts button.sel{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .why-box{display:none;margin-top:10px;background:#eef4ee;border-radius:10px;padding:10px 12px;font-size:13px;color:#3d4d3d}
+  .quiz-foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:8px}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;border-radius:999px;padding:3px 10px}
+  .pill-pass{background:#e6f7ec;color:#0a7a2e}
+  .pill-fail{background:#fdeef0;color:#a12a3a}
+  .locked-note{background:#fff8e6;border:1px solid #f3dfa0;color:#7a5b00;border-radius:12px;padding:12px 14px;font-size:13px;margin:12px 0}
+</style>
+<!-- Berkas hasil build dari local/build-static.js — jangan diedit manual. Sumber: Weblog-DDK/Views/ -->
+<script src="../ddk-demo.js"></script>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-icon">⚡</div>
+      <div><div class="sidebar-title">Weblog DDK</div><div class="sidebar-subtitle">Dasar-Dasar Ketenagalistrikan</div></div>
+    </div>
+    <div class="sidebar-section">Mulai</div>
+    <nav class="sidebar-nav"><a href="#/dashboard" data-r="dashboard"><span class="icon">🏠</span> Dashboard</a></nav>
+    <div class="sidebar-section">Modul Materi</div>
+    <nav class="sidebar-nav" id="navMateri"></nav>
+    <div class="sidebar-section">Evaluasi</div>
+    <nav class="sidebar-nav" id="navUjian"></nav>
+    <div class="sidebar-section">Akun</div>
+    <nav class="sidebar-nav"><a href="#" onclick="doLogout();return false"><span class="icon">↪</span> Logout</a></nav>
+    <div class="sidebar-footer"><small id="sbUser">...</small><br><small style="opacity:0.7">SMK TR 2 Sinar Husni</small></div>
+  </aside>
+
+  <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+  <div class="mobile-topbar">
+    <div style="display:flex;align-items:center;gap:8px"><div class="logo-icon">⚡</div><strong>Weblog DDK</strong></div>
+    <button onclick="document.getElementById('sidebar').classList.toggle('open')" style="background:none;border:none;color:#fff;font-size:20px">☰</button>
+  </div>
+
+  <main class="main" id="main"></main>
+</div>
+
+<div id="toast" class="toast"></div>
+<script>
+function showToast(msg, type){
+  var el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast show '+(type||'');
+  setTimeout(function(){ el.className='toast'; }, 3000);
+}
+function showLoading(on){
+  document.body.classList.toggle('loading', !!on);
+}
+</script>
+
+
+<script>
+/* =========================================================
+   Weblog DDK — SPA Siswa
+
+   Alur: Materi 1 → Kuis 1 (lulus ≥75) → Materi 2 → ... → Ujian Akhir
+   Backend: Google Apps Script (google.script.run) atau Local (/api/*)
+   Tanpa backend → dummy mode (progres disimpan di localStorage)
+========================================================= */
+
+var PASS_SCORE = 75;
+var user = null;
+var progress = null; // {kuis:{kuis1:{best,passed,attempts},...}, ujian:{...}}
+
+/* ---------- DATA MATERI (hardcoded + gambar Wikimedia Commons) ----------
+   Tiap materi: pengertian → dasar teori → komponen → langkah → contoh kasus → rangkuman → glosarium.
+   Section memakai `blocks` (blok kaya): p (paragraf), ul (daftar), table (tabel),
+   note (kotak definisi), case (kotak contoh kasus), formula (rumus/perhitungan). */
+var WM = 'https://commons.wikimedia.org/wiki/Special:FilePath/';
+function wm(file){ return WM + encodeURIComponent(file) + '?width=900'; }
+
+var MATERI = [
+{
+  num:1, judul:'Proses Perencanaan Instalasi',
+  tujuan:'Menjelaskan tiga komponen bangunan (struktur, arsitektur, ME), memahami istilah ME/MEP dan truss, dasar sistem instalasi listrik, serta tahapan pekerjaan jasa ME dari penawaran sampai serah terima.',
+  img:{src:wm('Basement Electrical Plan, Saint Anthony Park Branch Library Blueprints, St. Paul, Minnesota - DPLA - baddbc9b60d469162303cf3d7ef05b1a.jpg'), credit:'Wikimedia Commons — "Basement Electrical Plan, Saint Anthony Park Branch Library Blueprints" (public domain)', cap:'Rancangan gambar (blueprint) instalasi listrik sebuah bangunan'},
+  sections:[
+    {h:'a. Pengertian: Tiga Komponen Bangunan', blocks:[
+      {t:'p', text:'Sebuah gedung yang sudah siap dipakai tersusun dari <b>tiga komponen</b> yang saling berhubungan. Ketiganya harus lengkap — tidak bisa hanya salah satu.'},
+      {t:'table', head:['Komponen','Fokus utama','Contoh pekerjaan'], rows:[
+        ['Struktur','Kekuatan & kestabilan bangunan','Pondasi, kolom, balok, rangka atap (truss)'],
+        ['Arsitektur','Keindahan & kenyamanan tampilan','Dinding, plafon, lantai, fasad'],
+        ['ME (Mekanikal & Elektrikal)','Fungsi / utilitas bangunan','Instalasi listrik, AC, pompa, tata suara']
+      ]},
+      {t:'note', title:'Kenapa bagian ME wajib?', text:'Sekuat dan seindah apa pun gedungnya, tanpa sistem ME (mekanikal & elektrikal) bangunan belum bisa digunakan. Bagian ME-lah yang membuat gedung "hidup": ada penerangan, air, pendingin, dan listrik untuk peralatan.'}
+    ]},
+    {h:'b. Istilah Penting: ME, MEP, dan Truss', blocks:[
+      {t:'p', text:'Dalam proyek bangunan kamu akan sering mendengar singkatan berikut. Pahami dulu artinya sebelum masuk ke tahapan pekerjaan.'},
+      {t:'ul', items:[
+        '<b>ME</b> (Mekanikal & Elektrikal) — sistem mekanikal (AC, pompa, lift, ventilasi) dan sistem elektrikal (instalasi listrik, penerangan, panel).',
+        '<b>MEP</b> (Mekanikal, Elektrikal, Plumbing) — perluasan dari ME. <i>Plumbing</i> berarti sistem perpipaan: air bersih, air kotor, dan sanitasi. Jadi <b>MEP = ME + perpipaan</b>.',
+        '<b>Truss</b> (rangka batang) — susunan batang baja/kayu berbentuk segitiga yang menyusun struktur atap bangunan. Truss termasuk bagian <b>struktur</b>, namun menjadi acuan pekerjaan ME: titik lampu dan jalur kabel di plafon mengikuti bentuk atap/truss.'
+      ]},
+      {t:'note', title:'Hati-hati', text:'Perencana ME wajib memahami struktur truss dan plafon bangunan, karena peletakan lampu, jalur kabel, dan panel harus mengikuti bentuk struktur tersebut agar aman dan rapi.'}
+    ]},
+    {h:'c. Dasar Sistem Instalasi Listrik', blocks:[
+      {t:'p', text:'Secara sederhana, aliran listrik dalam gedung selalu berpola <b>sumber → panel → beban</b>.'},
+      {t:'ul', items:[
+        '<b>Sumber</b>: PLN, genset, atau sumber lain. Panel utama (MDP) menerima pasokan dari sumber.',
+        '<b>Panel</b>: tempat pembagian dan proteksi arus ke seluruh cabang beban (SDP).',
+        '<b>Beban</b>: lampu (penerangan), stop kontak (tenaga), AC, pompa, dan mesin.'
+      ]},
+      {t:'p', text:'Jenis instalasi listrik yang dikerjakan jasa ME antara lain: penerangan, tenaga (stop kontak & mesin), tata suara, data/jaringan, dan penangkal petir.'},
+      {t:'formula', text:'Daya (P) = Tegangan (V) × Arus (I)<br>Rumus ini dipakai untuk memperkirakan besar arus tiap titik beban saat menyusun RAB.'}
+    ]},
+    {h:'d. Tahapan Pekerjaan Jasa ME', blocks:[
+      {t:'p', text:'Tahapan yang umum dilakukan antara pemilik gedung dan pihak jasa ME (sebagai sub-kontraktor):'},
+      {t:'ul', items:[
+        '<b>a) Penawaran pekerjaan</b> — jasa ME ditawari pekerjaan instalasi listrik oleh pemilik gedung atau kontraktor utama.',
+        '<b>b) Survei dan penjelasan pekerjaan</b> — jasa ME menghubungi pemilik untuk survei lokasi guna memperoleh data terperinci kebutuhan instalasi.',
+        '<b>c) Perencanaan</b> — menyusun rancangan gambar pemasangan dan Rencana Anggaran Biaya (RAB).',
+        '<b>d) Presentasi</b> — rancangan dan RAB dipresentasikan di depan pemilik; dibahas dan diperbaiki sampai tercapai kesepakatan.',
+        '<b>e) Pelaksanaan pekerjaan ME</b> — setelah kesepakatan, terbit Surat Perintah Kerja (SPK) dan dibentuk tim pengawas. Tahapannya: <b>Persiapan</b> → <b>Pelaksanaan</b> → <b>Tes/Commissioning</b>.',
+        '<b>f) Serah terima hasil pekerjaan</b> — pekerjaan yang lulus uji diserahkan dari pelaksana kepada pemilik beserta dokumennya.'
+      ]}
+    ]},
+    {h:'e. Detail Survei dan Perencanaan', blocks:[
+      {t:'p', text:'<b>Survei</b> berfungsi mendapatkan data terperinci: titik lampu, stop kontak, panel, jalur kabel, dan prediksi kebutuhan selama pekerjaan.'},
+      {t:'p', text:'<b>Perencanaan</b> menghasilkan dua dokumen utama:'},
+      {t:'ul', items:[
+        '<b>Rancangan gambar pemasangan</b> — peletakan peralatan listrik dan perlengkapannya: lampu, stop kontak, genset, panel, dan lain-lain.',
+        '<b>RAB (Rencana Anggaran Biaya)</b> — nilai material bahan, jasa teknisi, sewa alat, dan komponen biaya lain.'
+      ]},
+      {t:'case', title:'Contoh Kasus', text:'Sebuah gedung akan dibangun dan membutuhkan instalasi listrik untuk penerangan. Jasa ME menerima penawaran → survei titik lampu tiap ruang → menyusun gambar denah instalasi + RAB → presentasi ke pemilik → setelah disetujui terbit SPK → pemasangan sesuai gambar → tes parsial (per rangkaian) dan holistik (keseluruhan) → serah terima.'}
+    ]},
+    {h:'f. Komponen Pekerjaan Instalasi', blocks:[
+      {t:'table', head:['Komponen','Fungsi singkat'], rows:[
+        ['Titik lampu','Memberi penerangan ruangan'],
+        ['Stop kontak','Menyediakan daya untuk peralatan listrik'],
+        ['Panel','Membagi dan melindungi arus listrik'],
+        ['Genset','Sumber daya cadangan saat PLN padam'],
+        ['Jalur kabel / cable tray','Merapikan dan mengamankan jalur kabel']
+      ]}
+    ]}
+  ],
+  rangkuman:'Alur jasa ME: <b>Penawaran → Survei → Perencanaan (gambar + RAB) → Presentasi → SPK & Pelaksanaan (Persiapan–Pelaksanaan–Commissioning) → Serah Terima</b>. Ingat pola dasar listrik <b>sumber → panel → beban</b>, serta posisi ME/MEP dan truss di antara tiga komponen bangunan.',
+  glosarium:[
+    {istilah:'ME', arti:'Mekanikal & Elektrikal — sistem mekanik dan listrik sebuah bangunan.'},
+    {istilah:'MEP', arti:'Mekanikal, Elektrikal, Plumbing — ME ditambah sistem perpipaan/sanitasi.'},
+    {istilah:'Truss', arti:'Rangka batang segitiga penyusun struktur atap; acuan peletakan titik lampu dan jalur kabel.'},
+    {istilah:'RAB', arti:'Rencana Anggaran Biaya — nilai material, jasa teknisi, dan sewa alat.'},
+    {istilah:'SPK', arti:'Surat Perintah Kerja — dasar pelaksanaan pekerjaan setelah kesepakatan.'},
+    {istilah:'Sub-kontraktor', arti:'Pihak yang mengerjakan sebagian pekerjaan untuk kontraktor utama.'},
+    {istilah:'Commissioning', arti:'Pengujian akhir (parsial & holistik) sebelum instalasi dioperasikan.'},
+    {istilah:'BOQ', arti:'Bill of Quantity — daftar volume/kuantitas material suatu pekerjaan.'}
+  ],
+  kuis:[
+    {q:'Jasa ME mendapat tawaran pekerjaan instalasi listrik dari…', o:['Pemilik gedung atau kontraktor utama','Siswa SMK','Perusahaan asuransi','Pemasok kabel'], a:0, why:'Pekerjaan instalasi ditawarkan oleh pemilik gedung/kontraktor utama; jasa ME menjadi sub-kontraktor.'},
+    {q:'Tujuan utama survei sebelum pemasangan instalasi adalah…', o:['Menghibur pemilik gedung','Memperoleh data terperinci kebutuhan instalasi','Menjual material listrik','Merekrut teknisi baru'], a:1, why:'Survei menghasilkan data terperinci: titik lampu, stop kontak, panel, jalur kabel.'},
+    {q:'Dokumen yang memuat nilai material, jasa teknisi, dan sewa alat disebut…', o:['SPK','RAB','BA (Berita Acara)','Invoice'], a:1, why:'Rencana Anggaran Biaya (RAB) memuat biaya material, jasa, dan sewa alat.'},
+    {q:'Presentasi rancangan dilakukan bertujuan…', o:['Mengganti kontraktor','Mencapai kesepakatan dengan pemilik pekerjaan','Melatih teknisi','Menghitung pajak'], a:1, why:'Presentasi adalah forum pembahasan sampai tercapai kesepakatan.'},
+    {q:'Setelah presentasi disetujui, kontraktor menerima…', o:['SPK (Surat Perintah Kerja)','Sertifikat lahan','Izin PSDB','Polis asuransi'], a:0, why:'SPK diterbitkan sebagai dasar pelaksanaan pekerjaan, disertai tim pengawas.'},
+    {q:'Urutan tahapan pelaksanaan pekerjaan ME yang benar…', o:['Tes → Persiapan → Pelaksanaan','Persiapan → Pelaksanaan → Tes/Commissioning','Pelaksanaan → Persiapan → Tes','Commissioning → Pelaksanaan → Persiapan'], a:1, why:'Persiapan (alat/bahan/tenaga) → Pelaksanaan → Tes/Commissioning.'},
+    {q:'Pengujian yang dilakukan pada sebagian sistem disebut pengujian…', o:['Holistik','Parsial','Total','Akhir'], a:1, why:'Commissioning parsial menguji bagian per bagian; holistik menguji keseluruhan.'},
+    {q:'Serah terima pekerjaan dilakukan antara…', o:['Teknisi dengan supplier','Pelaksana dengan pemilik pekerjaan','Dua kontraktor sub','Guru dengan siswa'], a:1, why:'Setelah lulus uji, pekerjaan diserahterimakan dari pelaksana ke pemilik pekerjaan.'},
+    {q:'Bagian bangunan yang mengutamakan FUNGSI adalah bagian…', o:['Struktur','Arsitektur','ME (Mekanikal & Elektrikal)','Landscape'], a:2, why:'Struktur fokus kekuatan, arsitektur fokus keindahan, ME fokus fungsi/utilitas.'},
+    {q:'Singkatan MEP menambahkan bidang… dibanding ME.', o:['Pertambangan','Plumbing (perpipaan)','Penerbangan','Perkebunan'], a:1, why:'MEP = Mekanikal, Elektrikal, Plumbing; plumbing = sistem perpipaan/sanitasi.'},
+    {q:'Rangka batang segitiga penyusun struktur atap disebut…', o:['Truss','Busbar','Relay','RAB'], a:0, why:'Truss (rangka batang) menyusun struktur atap dan menjadi acuan peletakan titik lampu/jalur kabel.'},
+    {q:'Pola dasar aliran listrik dalam gedung adalah…', o:['Beban → panel → sumber','Sumber → panel → beban','Panel → sumber → beban','Beban → sumber → panel'], a:1, why:'Listrik mengalir dari sumber (PLN/genset) ke panel, lalu dibagi ke beban.'}
+  ]
+},
+{
+  num:2, judul:'Pembuatan Panel',
+  tujuan:'Memahami pengertian panel kendali/distribusi, dasar perpindahan sumber PLN–genset (ATS/AMF), komponen panel, langkah pembuatan, dan dasar perhitungan proteksi.',
+  img:{src:wm('00-bma-automation-operator-panel-with-pushbuttons.JPG'), credit:'Wikimedia Commons — "Operator panel with pushbuttons" oleh Elmschrat (CC BY-SA 3.0)', cap:'Panel kendali dengan tombol dan lampu indikator'},
+  sections:[
+    {h:'a. Pengertian Panel', blocks:[
+      {t:'p', text:'<b>Panel kendali pensaklaran beban</b> adalah panel yang mengendalikan perpindahan sumber daya dari PLN ke genset (dan sebaliknya) tanpa mengganggu operasional gedung.'},
+      {t:'p', text:'Selain panel kendali, dikenal <b>panel distribusi</b>: <b>MDP</b> (Main Distribution Panel) menerima pasokan utama lalu membaginya, sedangkan <b>SDP</b> (Sub Distribution Panel) membagi lagi ke kelompok beban.'},
+      {t:'note', title:'Intinya', text:'Panel = pusat pembagian + proteksi + pengendalian listrik dalam gedung.'}
+    ]},
+    {h:'b. Dasar Teori: Perpindahan Sumber (PLN–Genset)', blocks:[
+      {t:'ul', items:[
+        '<b>Manual</b> — operator memindahkan saklar dengan tangan saat listrik padam.',
+        '<b>ATS</b> (Automatic Transfer Switch) — memindahkan sumber dari PLN ke genset secara otomatis saat pemadaman.',
+        '<b>AMF</b> (Automatic Main Failure) — menyalakan genset otomatis saat PLN gagal, lalu mematikannya kembali saat PLN normal.',
+        '<b>Interlock</b> — pengaman agar PLN dan genset tidak pernah terhubung bersamaan (mencegah hubung singkat/bahaya).'
+      ]},
+      {t:'case', title:'Contoh Kasus', text:'Pemilik menghendaki panel genset bisa mensuplai arus ke seluruh gedung secara otomatis setelah pemadaman. Solusinya: panel dilengkapi ATS + AMF, dengan interlock mekanik/elektrik serta proteksi MCB/MCCB.'}
+    ]},
+    {h:'c. Komponen Panel', blocks:[
+      {t:'table', head:['Komponen','Fungsi singkat'], rows:[
+        ['MCB','Memutus arus otomatis saat beban lebih/singkat (kapasitas kecil, mis. per cabang)'],
+        ['MCCB','Seperti MCB namun untuk arus lebih besar (panel utama)'],
+        ['Kontaktor','Saklar elektromagnetik untuk menghubungkan/melepas beban'],
+        ['Relay','Pengendali logika panel (mis. urutan start)'],
+        ['TOR (Thermal Overload Relay)','Melindungi motor/genset dari beban lebih'],
+        ['Busbar','Penghantar utama pembagi arus di dalam panel'],
+        ['Lampu indikator','Menandakan status sumber (PLN/genset) menyala atau tidak'],
+        ['Alat ukur (V/A meter)','Memantau tegangan dan arus panel']
+      ]}
+    ]},
+    {h:'d. Langkah Pembuatan Panel', blocks:[
+      {t:'ul', items:[
+        'Survei difokuskan pada <b>peralatan yang akan dikendalikan</b> (mis. genset: kapasitas, tegangan, sistem starter).',
+        'Menyusun gambar rancangan panel dan rencana anggaran bahan sesuai kebutuhan.',
+        'Melakukan <b>perhitungan peralatan, kabel, dan proteksi</b> agar arus sesuai batas ukur.',
+        'Mengonsultasikan cara kerja panel dengan pemilik pekerjaan.',
+        'Merakit (manufaktur) panel, lalu mengujinya sebelum diserahkan.'
+      ]}
+    ]},
+    {h:'e. Dasar Perhitungan Sederhana', blocks:[
+      {t:'p', text:'Ilmu ketenagalistrikan sangat dibutuhkan di sini, terutama perhitungan peralatan, kabel, dan proteksi agar arus sesuai dengan batas ukurnya.'},
+      {t:'formula', text:'Arus nominal  I = P / V<br>Pilih rating MCB/MCCB ≥ arus nominal, dibulatkan ke ukuran standar terdekat.'},
+      {t:'ul', items:[
+        'Hitung total daya beban tiap kelompok (lampu, stop kontak, genset).',
+        'Tentukan arus nominal, lalu pilih rating MCB/MCCB di atasnya.',
+        'Pilih ukuran kabel dengan <b>KHA</b> (Kemampuan Hantar Arus) lebih besar dari arus beban.',
+        'Perhatikan panjang kabel agar penurunan tegangan (drop tegangan) tetap kecil.'
+      ]}
+    ]}
+  ],
+  rangkuman:'Pembuatan panel = pengertian panel kendali/distribusi → dasar perpindahan sumber (manual/ATS/AMF + interlock) → pilih komponen (MCB, MCCB, kontaktor, relay, TOR, busbar, indikator, alat ukur) → survei peralatan → gambar + RAB → hitung arus/kabel/proteksi → konsultasi cara kerja → rakit & uji. Contoh nyata: ATS genset otomatis.',
+  glosarium:[
+    {istilah:'Panel kendali', arti:'Panel yang mengendalikan perpindahan sumber daya PLN–genset.'},
+    {istilah:'MDP / SDP', arti:'Main/Sub Distribution Panel — panel pembagi utama dan panel pembagi cabang.'},
+    {istilah:'ATS', arti:'Automatic Transfer Switch — pengalih sumber otomatis PLN→genset.'},
+    {istilah:'AMF', arti:'Automatic Main Failure — penyala genset otomatis saat PLN gagal.'},
+    {istilah:'Interlock', arti:'Pengaman agar dua sumber tidak terhubung bersamaan.'},
+    {istilah:'MCB / MCCB', arti:'Pemutus arus otomatis untuk arus kecil/sedang (MCB) dan arus besar (MCCB).'},
+    {istilah:'KHA', arti:'Kemampuan Hantar Arus — batas arus aman sebuah kabel.'},
+    {istilah:'Busbar', arti:'Penghantar utama (tembaga/aluminium) pembagi arus di dalam panel.'}
+  ],
+  kuis:[
+    {q:'Panel kendali pensaklaran beban berfungsi untuk…', o:['Menghias ruang panel','Mengendalikan perpindahan sumber PLN ke genset','Menyimpan kabel cadangan','Mengukur suhu ruangan'], a:1, why:'Panel ini mengendalikan pensaklaran (perpindahan) beban dari PLN ke genset.'},
+    {q:'Fokus survei saat pembuatan panel adalah…', o:['Warna panel','Peralatan yang akan dikendalikan','Harga makan siang teknisi','Jumlah jendela gedung'], a:1, why:'Survei difokuskan pada peralatan yang dikendalikan, misalnya genset.'},
+    {q:'Perhitungan proteksi panel (MCB/relay) dibuat…', o:['Sesuai batas ukur','Sembarangan','Sebesar mungkin','Tanpa perhitungan'], a:0, why:'Perhitungan peralatan, kabel, dan proteksi harus sesuai batas ukur agar aman.'},
+    {q:'Cara kerja panel sebelum dibuat sebaiknya…', o:['Dirahasiakan','Dikonsultasikan dengan pemilik pekerjaan','Diacak','Dititipkan ke supplier'], a:1, why:'Konsultasi memastikan panel sesuai kebutuhan dan harapan pemilik.'},
+    {q:'Gedung yang otomatis beralih ke genset saat PLN padam menggunakan…', o:['ATS (Automatic Transfer Switch)','Kapasitor bank','Trafo step-down','Sekring'], a:0, why:'ATS memindahkan sumber otomatis saat pemadaman terjadi.'},
+    {q:'Sebelum membuat panel, teknisi harus menghitung…', o:['Jumlah karyawan','Peralatan, kabel, dan proteksi','Biaya iklan','Luas atap'], a:1, why:'Perhitungan peralatan, kabel, dan proteksi adalah inti perencanaan panel.'},
+    {q:'Contoh kasus di materi: setelah pemadaman, panel harus…', o:['Mematikan seluruh gedung','Mensuplai arus ke seluruh gedung secara otomatis','Menunggu instruksi manual setiap saat','Memutus semua rangkaian'], a:1, why:'Pemilik menghendaki genset otomatis mensuplai seluruh gedung saat PLN padam.'},
+    {q:'Alat ukur yang tepat untuk memeriksa tegangan panel adalah…', o:['Meteran kain','Multimeter','Termometer','Barometer'], a:1, why:'Multimeter mengukur tegangan, arus, dan resistansi pada panel.'},
+    {q:'Panel yang membagi pasokan utama ke beberapa kelompok beban disebut…', o:['MDP','ATS','TOR','Truss'], a:0, why:'MDP (Main Distribution Panel) membagi pasokan utama; SDP membagi ke kelompok cabang.'},
+    {q:'Alat yang MENYALAKAN genset otomatis saat PLN gagal adalah…', o:['ATS','AMF','MCB','Busbar'], a:1, why:'AMF (Automatic Main Failure) menyalakan genset otomatis saat PLN gagal.'},
+    {q:'Interlock pada panel dua sumber berfungsi…', o:['Mempercepat genset','Mencegah PLN & genset terhubung bersamaan','Menambah beban','Mengurangi tegangan'], a:1, why:'Interlock mencegah dua sumber terhubung bersamaan agar tidak terjadi hubung singkat.'},
+    {q:'Kemampuan Hantar Arus (KHA) berkaitan dengan…', o:['Warna kabel','Batas arus aman sebuah kabel','Harga panel','Jumlah lampu'], a:1, why:'KHA adalah batas arus aman yang boleh dilewatkan sebuah kabel.'}
+  ]
+},
+{
+  num:3, judul:'Pemeliharaan, Perbaikan, dan Perawatan Peralatan',
+  tujuan:'Memahami jenis-jenis pemeliharaan, penyusunan SOP dan jadwal perawatan, pengecekan harian, alur penanganan kerusakan, serta dasar K3 dalam pekerjaan ketenagalistrikan.',
+  img:{src:wm("US Navy 040311-N-6433N-040 Electrician's Mate Fireman Brian Smith, of Independence, Mo., replaces a fuse in a switch panel aboard USS George Washington (CVN 73).jpg"), credit:'Wikimedia Commons — "Electrician replaces a fuse in a switch panel" (US Navy, public domain)', cap:'Teknisi mengganti sekring pada panel saklar dengan alat pelindung diri'},
+  sections:[
+    {h:'a. Pengertian Pemeliharaan', blocks:[
+      {t:'p', text:'<b>Pemeliharaan (maintenance)</b> adalah rangkaian kegiatan untuk menjaga peralatan ketenagalistrikan tetap bekerja sesuai fungsinya, aman, dan berumur panjang.'},
+      {t:'ul', items:[
+        '<b>Preventif</b> — perawatan terjadwal sebelum kerusakan terjadi.',
+        '<b>Korektif</b> — perbaikan setelah kerusakan terjadi.',
+        '<b>Prediktif</b> — perawatan berdasarkan pemantauan kondisi (mis. suhu, getaran, arus).'
+      ]},
+      {t:'note', title:'Kenapa penting?', text:'Perawatan preventif jauh lebih murah daripada perbaikan besar akibat kerusakan total.'}
+    ]},
+    {h:'b. Dasar: SOP dan Jadwal Pemeliharaan', blocks:[
+      {t:'p', text:'Pemilik gedung telah memiliki desain gedung dari jasa instalasi & panel. Dari data itu, pihak pemelihara menyusun <b>SOP (Standar Operasional Prosedur) sesuai peralatan yang digunakan</b> — SOP panel berbeda dengan SOP AC atau lift.'},
+      {t:'table', head:['Peralatan','Contoh jadwal'], rows:[
+        ['AC','Diperiksa/dibersihkan 3 bulan sekali'],
+        ['Lampu','Diganti saat mati / dicek rutin'],
+        ['Lift','Sesuai jadwal vendor & inspeksi'],
+        ['Pompa air','Cek rutin debit, suara, dan kebocoran'],
+        ['Panel','Cek indikator, suhu, dan kekencangan terminal']
+      ]}
+    ]},
+    {h:'c. Pengecekan Harian', blocks:[
+      {t:'p', text:'Pengecekan harian dilakukan untuk <b>deteksi dini kerusakan</b> sebelum menjadi kerusakan besar.'},
+      {t:'ul', items:[
+        'Lampu indikator panel menyala normal atau tidak.',
+        'Suara/bunyi tidak wajar pada mesin (pompa, lift).',
+        'Kebocoran air atau bau terbakar.',
+        'Panas berlebih dan getaran berlebih.'
+      ]}
+    ]},
+    {h:'d. Penanganan Kerusakan', blocks:[
+      {t:'ul', items:[
+        'Jika kerusakan dapat ditangani tim internal (teknisi gedung), dikerjakan secara internal.',
+        'Jika tidak dapat ditangani internal, di-order ke pihak ketiga (vendor/ahli).',
+        'Tim pemelihara menerima data kerusakan dari laporan pemilik, sehingga harus selalu <b>siap sedia</b>.'
+      ]},
+      {t:'case', title:'Contoh Kasus', text:'MCB panel sering trip berulang. Langkahnya: cek beban/rangkaian sesuai SOP (bukan langsung mengganti MCB berulang) → identifikasi penyebab: beban lebih, kabel longgar, atau gangguan isolasi → tangani sendiri bila mampu, atau order ke pihak ketiga bila perlu.'}
+    ]},
+    {h:'e. Dasar K3 (Keselamatan Kerja)', blocks:[
+      {t:'ul', items:[
+        'Pastikan sumber terputus dan terpasang label "<i>jangan dihidupkan</i>" saat bekerja.',
+        'Gunakan alat ukur yang benar dan alat pelindung diri (sarung tangan, sepatu isolasi).',
+        'Lakukan uji bebas tegangan sebelum menyentuh rangkaian.',
+        'Bekerja berpasangan untuk pekerjaan panel/berisiko tinggi.'
+      ]}
+    ]}
+  ],
+  rangkuman:'Pemeliharaan = jenis (preventif/korektif/prediktif) + SOP per peralatan + jadwal (AC 3 bulan dll) + cek harian deteksi dini + penanganan: internal bila bisa, pihak ketiga bila tidak + patuhi K3.',
+  glosarium:[
+    {istilah:'SOP', arti:'Standar Operasional Prosedur — langkah baku pekerjaan untuk suatu peralatan.'},
+    {istilah:'Preventif', arti:'Perawatan terjadwal sebelum kerusakan terjadi.'},
+    {istilah:'Korektif', arti:'Perbaikan yang dilakukan setelah kerusakan terjadi.'},
+    {istilah:'Prediktif', arti:'Perawatan berdasarkan pemantauan kondisi peralatan.'},
+    {istilah:'K3', arti:'Keselamatan dan Kesehatan Kerja — aturan bekerja aman.'},
+    {istilah:'Work order', arti:'Perintah kerja tertulis untuk suatu tugas perbaikan/perawatan.'},
+    {istilah:'Downtime', arti:'Waktu ketika peralatan tidak beroperasi (berhenti).'}
+  ],
+  kuis:[
+    {q:'SOP perawatan disusun…', o:['Sama untuk semua alat','Sesuai peralatan yang digunakan','Hanya untuk AC','Sekali seumur hidup'], a:1, why:'SOP harus disesuaikan karakteristik tiap peralatan.'},
+    {q:'Jadwal perawatan AC yang umum adalah…', o:['3 tahun sekali','3 bulan sekali','3 hari sekali','10 tahun sekali'], a:1, why:'Contoh di materi: AC dirawat 3 bulan sekali.'},
+    {q:'Tujuan pengecekan harian adalah…', o:['Menghabiskan waktu','Deteksi dini kerusakan','Mengganti semua kabel','Menaikkan tagihan listrik'], a:1, why:'Cek harian mendeteksi kerusakan kecil sebelum menjadi besar.'},
+    {q:'Kerusakan yang tidak bisa ditangani internal sebaiknya…', o:['Dibiarkan','Diorder ke pihak ketiga','Diperbaiki paksa tanpa ahli','Disembunyikan'], a:1, why:'Kerusakan di luar kemampuan internal di-order ke vendor/pihak ketiga.'},
+    {q:'Yang BUKAN contoh objek jadwal pemeliharaan di materi adalah…', o:['Lampu','Lift','Pompa air','Mesin pesawat terbang'], a:3, why:'Objek pemeliharaan: AC, lampu, lift, pompa air, panel.'},
+    {q:'Tim pemeliharaan gedung harus selalu…', o:['Cuti terus','Siap sedia','Libur saat kerusakan','Hanya datang saat ada keluhan'], a:1, why:'Kesiapan tim membuat penanganan kerusakan cepat.'},
+    {q:'Perawatan yang dilakukan sebelum kerusakan terjadi disebut…', o:['Korektif','Preventif','Darurat','Pasca-jual'], a:1, why:'Perawatan preventif mencegah kerusakan — dilakukan lewat jadwal & cek rutin.'},
+    {q:'Jika panel listrik sering MCB-trip, langkah pertama adalah…', o:['Ganti MCB terus','Cek beban/rangkaian sesuai SOP','Lepas MCB-nya','Ignore'], a:1, why:'Diagnosa sesuai SOP dulu; bukan asal ganti komponen.'},
+    {q:'Perawatan berdasarkan pemantauan kondisi (suhu/getaran) disebut…', o:['Preventif','Korektif','Prediktif','Darurat'], a:2, why:'Perawatan prediktif didasarkan pada pemantauan kondisi peralatan.'},
+    {q:'Sebelum bekerja pada rangkaian, teknisi wajib…', o:['Langsung menyentuh kabel','Memastikan sumber terputus & uji bebas tegangan','Menaikkan beban','Mematikan semua lampu gedung'], a:1, why:'Pastikan sumber terputus dan lakukan uji bebas tegangan sebelum menyentuh rangkaian (K3).'},
+    {q:'Yang dimaksud downtime adalah…', o:['Waktu peralatan beroperasi','Waktu peralatan tidak beroperasi/berhenti','Jam kerja teknisi','Jadwal cuti'], a:1, why:'Downtime adalah waktu saat peralatan berhenti/tidak beroperasi.'},
+    {q:'Perawatan korektif dilakukan…', o:['Sebelum kerusakan','Setelah kerusakan terjadi','Setiap hari tanpa alasan','Hanya saat audit'], a:1, why:'Perawatan korektif dilakukan setelah kerusakan terjadi.'}
+  ]
+},
+{
+  num:4, judul:'Pengelolaan SDM',
+  tujuan:'Memahami pengertian pengelolaan SDM, posisi kerja lulusan TITL, alur proyek ME menyeluruh, kompetensi & sertifikasi, serta struktur organisasi proyek ME.',
+  img:{src:wm("US Navy 070328-N-1003P-002 Master Chief Engineman Shannon Thornton and Electrician's Mate 1st Class Brent Arntzen assigned to Combined Joint Task Force-Horn of Africa's Mobile Training Team teach members of the Djiboutian Navy.jpg"), credit:'Wikimedia Commons — "Mobile Training Team teach members of the Djiboutian Navy" (US Navy, public domain)', cap:'Tim pengajar melatih teknisi muda — pengelolaan SDM dan kompetensi'},
+  sections:[
+    {h:'a. Pengertian Pengelolaan SDM', blocks:[
+      {t:'p', text:'<b>Sumber Daya Manusia (SDM)</b> adalah tenaga kerja yang mengerjakan suatu pekerjaan. <b>Pengelolaan SDM</b> berarti mengatur orang agar kompetensinya tepat guna: menempatkan orang yang tepat pada tahap pekerjaan yang tepat.'},
+      {t:'note', title:'Tujuan', text:'Mutu kerja terjaga, pekerjaan selesai tepat waktu, dan biaya proyek tetap efisien.'}
+    ]},
+    {h:'b. Posisi Kerja Lulusan TITL', blocks:[
+      {t:'p', text:'Banyak posisi penting dalam proyek ME dapat diisi oleh lulusan SMK Teknik Ketenagalistrikan:'},
+      {t:'table', head:['Tahap pekerjaan','Posisi contoh'], rows:[
+        ['Perencanaan','Drafter gambar instalasi, estimator RAB'],
+        ['Pemasangan','Teknisi instalasi listrik'],
+        ['Pengujian','Teknisi testing & commissioning'],
+        ['Pemeliharaan','Teknisi pemeliharaan/perawatan'],
+        ['Perbaikan','Teknisi perbaikan, supervisor kerja']
+      ]}
+    ]},
+    {h:'c. Alur Proyek ME Menyeluruh', blocks:[
+      {t:'formula', text:'Perencanaan → gambar instalasi → survey → RAB → pemasangan → testing → commissioning → pemeliharaan → perawatan → perbaikan'},
+      {t:'p', text:'Tiap tahap membutuhkan kompetensi berbeda. Lulusan TITL dapat mengisi posisi di sepanjang alur tersebut, mulai dari sisi perencanaan sampai perbaikan kerusakan.'}
+    ]},
+    {h:'d. Kompetensi & Sertifikasi', blocks:[
+      {t:'ul', items:[
+        '<b>Kompetensi teknis</b>: membaca gambar, mengukur, memasang, dan memperbaiki instalasi.',
+        '<b>Kompetensi K3</b>: bekerja aman serta memahami prosedur keselamatan.',
+        '<b>Sertifikasi/keahlian</b> (mis. teknisi listrik berlisensi) meningkatkan nilai di dunia kerja.',
+        '<b>Soft skill</b>: komunikasi, kerja tim, disiplin, dan tanggung jawab.'
+      ]}
+    ]},
+    {h:'e. Struktur Organisasi Proyek ME', blocks:[
+      {t:'table', head:['Peran','Tugas singkat'], rows:[
+        ['Project Manager','Memimpin dan bertanggung jawab penuh atas proyek'],
+        ['Site Engineer','Mengatur teknis pelaksanaan di lapangan'],
+        ['Supervisor','Mengawasi mutu & keselamatan kerja'],
+        ['Teknisi','Melaksanakan pekerjaan instalasi/perawatan']
+      ]},
+      {t:'case', title:'Contoh Kasus', text:'Proyek memasang instalasi gedung baru: estimator menyusun RAB, drafter membuat gambar, teknisi memasang, site engineer mengatur urutan kerja, supervisor mengawasi K3, lalu teknisi pemeliharaan merawat setelah serah terima. Jika satu posisi kosong, alur bisa tersendat — inilah inti pengelolaan SDM.'}
+    ]}
+  ],
+  rangkuman:'Alur lengkap proyek ME: perencanaan → gambar → survey → RAB → pemasangan → testing → commissioning → pemeliharaan → perawatan → perbaikan. Lulusan TITL menempati posisi teknis di sepanjang alur, dan pengelolaan SDM memastikan orang yang tepat ada di tahap yang tepat.',
+  glosarium:[
+    {istilah:'SDM', arti:'Sumber Daya Manusia — tenaga kerja yang mengerjakan pekerjaan.'},
+    {istilah:'Estimator', arti:'Orang yang menyusun Rencana Anggaran Biaya (RAB).'},
+    {istilah:'Drafter', arti:'Orang yang membuat gambar instalasi listrik.'},
+    {istilah:'Supervisor', arti:'Pengawas mutu dan keselamatan kerja di lapangan.'},
+    {istilah:'Site Engineer', arti:'Penanggung jawab teknis pelaksanaan di lapangan.'},
+    {istilah:'Project Manager', arti:'Pemimpin dan penanggung jawab penuh proyek.'},
+    {istilah:'Sertifikasi', arti:'Pengakuan resmi atas kompetensi/keahlian seseorang.'}
+  ],
+  kuis:[
+    {q:'Urutan awal alur proyek ME yang benar adalah…', o:['Pemasangan → Perencanaan','Perencanaan → Gambar instalasi → Survey → RAB','RAB → Perencanaan → Gambar','Testing → Perencanaan'], a:1, why:'Dimulai dari perencanaan, gambar instalasi, survey, lalu RAB.'},
+    {q:'Tahap setelah "testing" dalam alur proyek ME adalah…', o:['Survey','Commissioning','RAB','Gambar instalasi'], a:1, why:'Testing dilanjutkan commissioning (serah operasi).'},
+    {q:'Lulusan SMK TITL dapat berposisi sebagai…', o:['Teknisi instalasi & pemeliharaan','Estimator RAB','Drafter gambar instalasi','Semua benar'], a:3, why:'Semua pilihan adalah posisi kerja lulusan TITL.'},
+    {q:'Inti pengelolaan SDM dalam proyek ME adalah…', o:['Menambah orang sebanyak-banyaknya','Menempatkan orang tepat pada tahap yang tepat','Mengurangi gaji','Menghindari pelatihan'], a:1, why:'Pengelolaan SDM memastikan kompetensi tepat guna di tiap tahap.'},
+    {q:'Dokumen gambar instalasi dibuat pada tahap…', o:['Sebelum survey & RAB','Setelah serah terima','Saat penggajian','Saat commissioning saja'], a:0, why:'Gambar instalasi disusun setelah perencanaan awal, menjadi dasar survey & RAB.'},
+    {q:'Kegiatan "pemeliharaan" pada alur proyek dilakukan…', o:['Sebelum gedung dibangun','Setelah commissioning/operasi','Hanya saat proyek selesai kontrak','Tidak perlu'], a:1, why:'Pemeliharaan berjalan selama umur operasional instalasi.'},
+    {q:'Estimator adalah orang yang bertugas…', o:['Menggambar 3D','Menghitung RAB','Menjual makanan','Mengontrol AC'], a:1, why:'Estimator menyusun Rencana Anggaran Biaya.'},
+    {q:'Tahapan terakhir pada alur proyek ME adalah…', o:['Perbaikan','Survey','Penawaran','Presentasi'], a:0, why:'Alur diakhiri perawatan berkelanjutan dan perbaikan bila terjadi kerusakan.'},
+    {q:'Yang menyusun gambar instalasi listrik adalah…', o:['Drafter','Estimator','Supervisor','Kurir'], a:0, why:'Drafter bertugas membuat gambar instalasi listrik.'},
+    {q:'Peran yang memimpin dan bertanggung jawab penuh atas proyek adalah…', o:['Teknisi','Project Manager','Drafter','Estimator'], a:1, why:'Project Manager memimpin dan bertanggung jawab penuh atas proyek.'},
+    {q:'Posisi yang mengawasi mutu & keselamatan kerja di lapangan adalah…', o:['Supervisor','Estimator','Drafter','Supplier'], a:0, why:'Supervisor mengawasi mutu dan keselamatan kerja (K3) di lapangan.'},
+    {q:'Selain kompetensi teknis, lulusan TITL perlu kompetensi…', o:['K3 & soft skill','Menyanyi','Desain grafis','Akuntansi pajak'], a:0, why:'Kompetensi K3 dan soft skill (komunikasi, kerja tim) penting di dunia kerja.'}
+  ]
+}];
+
+var UJIAN = [
+  {q:'Tahap pertama pekerjaan jasa ME adalah…', o:['Serah terima','Penawaran pekerjaan','Commissioning','Pemeliharaan'], a:1, why:'Jasa ME lebih dulu menerima penawaran pekerjaan dari pemilik/kontraktor utama.'},
+  {q:'RAB berisi…', o:['Daftar hadir','Nilai material, jasa teknisi, sewa alat','Gambar 3D','Jadwal libur'], a:1, why:'RAB memuat nilai material bahan, jasa teknisi, dan sewa alat.'},
+  {q:'SPK diterbitkan setelah…', o:['Kesepakatan tercapai','Gedung selesai','MCB dipasang','Survey gagal'], a:0, why:'SPK terbit setelah rancangan/RAB disetujui pada tahap presentasi.'},
+  {q:'Commissioning parsial berarti pengujian…', o:['Sebagian sistem','Seluruh gedung','Satu kabel','Semua karyawan'], a:0, why:'Parsial = menguji bagian per bagian; holistik = menguji keseluruhan.'},
+  {q:'Data survei instalasi mencakup…', o:['Titik lampu, stop kontak, panel, jalur kabel','Daftar menu kantin','Absensi karyawan','Harga saham'], a:0, why:'Survei menghasilkan data titik lampu, stop kontak, panel, dan jalur kabel.'},
+  {q:'ATS digunakan untuk…', o:['Mengukur tegangan','Perpindahan sumber otomatis PLN-genset','Menyimpan alat','Menghias panel'], a:1, why:'ATS memindahkan sumber dari PLN ke genset secara otomatis.'},
+  {q:'Sebelum membuat panel, hal yang DIHITUNG adalah…', o:['Jumlah tamu','Peralatan, kabel, proteksi','Cuaca','Harga tanah'], a:1, why:'Perhitungan peralatan, kabel, dan proteksi adalah inti pembuatan panel.'},
+  {q:'Panel dibuat sesuai kebutuhan melalui…', o:['Konsultasi dengan pemilik pekerjaan','Tebakan teknisi','Copy-paste proyek lain','Undian'], a:0, why:'Cara kerja panel dikonsultasikan agar sesuai kebutuhan pemilik.'},
+  {q:'Genset mensuplai seluruh gedung otomatis saat padam merupakan contoh…', o:['Kasus panel kendali','Kesalahan instalasi','Pemborosan','Hal mustahil'], a:0, why:'Ini contoh nyata kasus panel kendali dengan ATS/AMF.'},
+  {q:'AC dirawat…', o:['3 bulan sekali','3 tahun sekali','Bila rusak saja','Tidak perlu'], a:0, why:'Contoh jadwal di materi: AC dirawat 3 bulan sekali.'},
+  {q:'Pengecekan harian bertujuan…', o:['Deteksi dini kerusakan','Menghabiskan jam kerja','Mengganti panel','Menaikkan beban'], a:0, why:'Cek harian mendeteksi kerusakan kecil sebelum menjadi besar.'},
+  {q:'Kerusakan di luar kemampuan internal ditangani dengan…', o:['Order pihak ketiga','Diamkan','Matikan gedung','Coba-coba tanpa ahli'], a:0, why:'Kerusakan yang tidak bisa ditangani internal di-order ke pihak ketiga.'},
+  {q:'SOP perawatan dibuat…', o:['Sesuai peralatan','Seragam semua alat','Tanpa dokumen','Hanya saat audit'], a:0, why:'SOP disesuaikan dengan peralatan yang digunakan.'},
+  {q:'Urutan yang benar: …', o:['Survey → RAB → Pemasangan','Pemasangan → Survey → RAB','RAB → Survey → Gambar','Testing → Survey → RAB'], a:0, why:'Setelah survey disusun RAB, baru pemasangan dilakukan.'},
+  {q:'Tahap setelah pemasangan adalah…', o:['Testing','Survey','Penawaran','Presentasi'], a:0, why:'Setelah pemasangan dilakukan testing (parsial/holistik).'},
+  {q:'Tahap akhir alur proyek ME adalah…', o:['Perbaikan','Gambar','RAB','Penawaran'], a:0, why:'Alur diakhiri perawatan berkelanjutan dan perbaikan bila rusak.'},
+  {q:'Estimator bertugas menyusun…', o:['RAB','Gambar karya','Absensi','Kontrak vendor'], a:0, why:'Estimator menyusun Rencana Anggaran Biaya.'},
+  {q:'Serah terima dilakukan antara…', o:['Pelaksana dan pemilik pekerjaan','Dua siswa','Supplier dan kurir','Guru dan ortu'], a:0, why:'Serah terima dilakukan pelaksana kepada pemilik setelah lulus uji.'},
+  {q:'Alat ukur tegangan panel adalah…', o:['Multimeter','Barometer','Higrometer','Speedometer'], a:0, why:'Multimeter mengukur tegangan, arus, dan resistansi.'},
+  {q:'Perawatan preventif dilakukan…', o:['Sebelum kerusakan terjadi','Setelah gedung runtuh','Saat listrik padam total','Tanpa jadwal'], a:0, why:'Perawatan preventif dilakukan terjadwal sebelum kerusakan terjadi.'}
+];
+
+/* ---------- BACKEND LAYER (GAS / Local / Dummy) ---------- */
+var BACKEND = (typeof google !== 'undefined' && google.script && google.script.run) ? 'gas' : 'local';
+var LS_KEY = 'ddk_progress_';
+
+function lsLoad(){ try{ return JSON.parse(localStorage.getItem(LS_KEY+(user?user.nis:''))||'null'); }catch(e){ return null; } }
+function lsSave(p){ try{ localStorage.setItem(LS_KEY+(user?user.nis:''), JSON.stringify(p)); }catch(e){} }
+function emptyProgress(){
+  return { kuis:{kuis1:null,kuis2:null,kuis3:null,kuis4:null}, ujian:null };
+}
+function normalizeProgress(p){
+  var e = emptyProgress();
+  if(!p) return e;
+  ['kuis1','kuis2','kuis3','kuis4'].forEach(function(k){ if(p.kuis && p.kuis[k]) e.kuis[k]=p.kuis[k]; });
+  if(p.ujian) e.ujian = p.ujian;
+  return e;
+}
+function apiCall(fnName, payload, cb){
+  if(BACKEND==='gas'){
+    google.script.run.withSuccessHandler(cb).withFailureHandler(function(){ cb(null); })[fnName](payload);
+  } else {
+    fetch('/api/'+fnName, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+      .then(function(r){return r.json()}).then(cb).catch(function(){ cb(null); });
+  }
+}
+function loadProgress(cb){
+  if(!user){ cb(emptyProgress()); return; }
+  apiCall('getStudentProgress', {userId:user.id, nis:user.nis}, function(res){
+    if(res && res.success && res.progress){ progress = normalizeProgress(res.progress); }
+    else { progress = lsLoad() || emptyProgress(); }
+    lsSave(progress);
+    cb(progress);
+  });
+}
+function saveQuizResult(quizKey, score, total, cb){
+  var nilai = Math.round(score/total*100);
+  var rec = {best:nilai, passed:nilai>=PASS_SCORE, score:score, total:total, at:new Date().toISOString()};
+  // optimistic local
+  if(quizKey==='ujian') progress.ujian = rec;
+  else progress.kuis[quizKey] = rec;
+  lsSave(progress);
+  apiCall('submitMateriQuiz', {userId:user.id, nis:user.nis, quizKey:quizKey, score:score, total:total}, function(res){
+    if(res && res.success && res.progress){ progress = normalizeProgress(res.progress); lsSave(progress); }
+    cb(progress);
+  });
+}
+
+/* ---------- GATING ---------- */
+function quizPassed(key){
+  var node = (key==='ujian') ? progress.ujian : progress.kuis[key];
+  return !!(node && node.passed);
+}
+function isMateriUnlocked(num){
+  if(num===1) return true;
+  return quizPassed('kuis'+(num-1));
+}
+function isUjianUnlocked(){
+  return quizPassed('kuis4');
+}
+function bestScore(key){
+  var node = (key==='ujian') ? progress.ujian : progress.kuis[key];
+  return node ? node.best : null;
+}
+
+/* ---------- ROUTER ---------- */
+var routes = { dashboard:renderDashboard, materi:renderMateriList, materidetail:renderMateriDetail, kuis:renderKuis, ujian:renderUjian };
+function route(){
+  var h = (location.hash||'#/dashboard').replace('#/','');
+  var parts = h.split('/');
+  var page = parts[0]||'dashboard';
+  var arg = parts[1]?decodeURIComponent(parts[1]):null;
+  document.getElementById('sidebar').classList.remove('open');
+  (routes[page]||renderDashboard)(arg);
+  highlightNav(page, arg);
+  window.scrollTo(0,0);
+}
+function go(path){
+  // Kalau hash-nya sama, hashchange tidak terpicu -> panggil route() langsung.
+  if(location.hash === path || location.hash === '#'+path){ route(); return; }
+  location.hash = path;
+}
+function highlightNav(page, arg){
+  document.querySelectorAll('.sidebar-nav a').forEach(function(a){
+    var r = a.getAttribute('data-r');
+    a.classList.toggle('active', r===page && (!arg || a.getAttribute('data-arg')===String(arg)));
+  });
+}
+
+/* ---------- RENDER: SIDEBAR ---------- */
+function renderNav(){
+  var nav = document.getElementById('navMateri');
+  nav.innerHTML = '';
+  MATERI.forEach(function(m){
+    var unlocked = isMateriUnlocked(m.num);
+    var done = quizPassed('kuis'+m.num);
+    var a = document.createElement('a');
+    a.href = unlocked ? ('#/materidetail/'+m.num) : '#';
+    a.setAttribute('data-r','materidetail');
+    a.setAttribute('data-arg', String(m.num));
+    a.style.opacity = unlocked?1:0.55;
+    a.innerHTML = '<span class="icon">'+(done?'✅':(unlocked?m.num:'🔒'))+'</span> '+m.num+' · '+m.judul.split(' ').slice(0,2).join(' ')+'...';
+    if(!unlocked) a.onclick = function(e){ e.preventDefault(); showToast('Selesaikan kuis Materi '+(m.num-1)+' dulu (nilai ≥ '+PASS_SCORE+')','error'); };
+    nav.appendChild(a);
+  });
+  var navU = document.getElementById('navUjian');
+  navU.innerHTML='';
+  var unlocked = isUjianUnlocked();
+  var done = quizPassed('ujian');
+  var a = document.createElement('a');
+  a.href = unlocked ? '#/ujian' : '#';
+  a.setAttribute('data-r','ujian');
+  a.style.opacity = unlocked?1:0.55;
+  a.innerHTML = '<span class="icon">'+(done?'🏆':(unlocked?'📝':'🔒'))+'</span> Ujian Akhir';
+  if(!unlocked) a.onclick = function(e){ e.preventDefault(); showToast('Lulus kuis Materi 4 dulu untuk membuka Ujian Akhir','error'); };
+  navU.appendChild(a);
+}
+
+/* ---------- RENDER: DASHBOARD ---------- */
+function renderDashboard(){
+  var doneCount = [1,2,3,4].filter(function(n){return quizPassed('kuis'+n);}).length;
+  var passedCount = doneCount; // kuis lulus = modul selesai
+  var ujianNilai = bestScore('ujian');
+  var avg = [];
+  ['kuis1','kuis2','kuis3','kuis4'].forEach(function(k){ if(progress.kuis[k]) avg.push(progress.kuis[k].best); });
+  var avgNilai = avg.length ? Math.round(avg.reduce(function(a,b){return a+b;},0)/avg.length) : null;
+
+  var html = ''
+  + '<div class="badge-pill" style="margin-bottom:12px">📗 Interaktif · '+user.kelas+' · NIS '+user.nis+'</div>'
+  + '<div class="hero"><div>'
+  + '<div class="hero-title">Kuasai DDK, materi demi <span>materi</span>, sampai <span>siap ujian</span>.</div>'
+  + '<div class="hero-desc">4 modul materi + kuis di akhir tiap materi (lulus ≥ '+PASS_SCORE+' untuk lanjut) + <strong>Ujian Akhir</strong> 20 soal. Halaman selalu terbuka di HP.</div>'
+  + '<div class="hero-cta">'+nextActionCta()+'</div>'
+  + '</div>'
+  + panelProgres()
+  + '</div>'
+  + '<div class="stats">'
+  + '<div class="stat-card"><div class="stat-number">'+doneCount+'/4</div><div class="stat-label">Modul selesai</div><div class="stat-bar"><div class="stat-bar-fill" style="width:'+(doneCount/4*100)+'%"></div></div></div>'
+  + '<div class="stat-card"><div class="stat-number">'+passedCount+'/4</div><div class="stat-label">Kuis lulus (≥ '+PASS_SCORE+')</div><div class="stat-bar"><div class="stat-bar-fill" style="width:'+(passedCount/4*100)+'%"></div></div></div>'
+  + '<div class="stat-card"><div class="stat-number">'+(avgNilai===null?'—':avgNilai)+'</div><div class="stat-label">Rata-rata nilai kuis</div><div class="stat-bar"><div class="stat-bar-fill" style="width:'+(avgNilai||0)+'%"></div></div></div>'
+  + '<div class="stat-card"><div class="stat-number">'+(ujianNilai===null?'—':ujianNilai)+'</div><div class="stat-label">Nilai ujian akhir</div><div class="stat-bar"><div class="stat-bar-fill" style="width:'+(ujianNilai||0)+'%"></div></div></div>'
+  + '</div>'
+  + '<div class="section-why"><h2>Kenapa wajib bisa DDK?</h2>'
+  + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:12px" class="grid-3">'
+  + '<div><strong>⚡ Alur jasa ME nyata</strong><br><small style="color:var(--muted)">Penawaran, survei, RAB, panel, sampai pemeliharaan — sesuai kurikulum DDK Kelas X TITL.</small></div>'
+  + '<div><strong>🧠 Kuis antar materi</strong><br><small style="color:var(--muted)">Lulus kuis (≥ '+PASS_SCORE+') untuk membuka materi berikutnya — belajar bertahap terkontrol.</small></div>'
+  + '<div><strong>📈 Nilai terpantau guru</strong><br><small style="color:var(--muted)">Semua nilai kuis & ujian tampil di dashboard guru secara real-time.</small></div>'
+  + '</div></div>'
+  + '<div class="materi-list" id="dashMateri"></div>';
+  document.getElementById('main').innerHTML = html;
+  renderMateriCards('dashMateri');
+}
+
+function nextActionCta(){
+  for(var i=1;i<=4;i++){
+    if(!quizPassed('kuis'+i)){
+      if(isMateriUnlocked(i)) return '<a class="btn-hero-primary" href="#/materidetail/'+i+'">▶ Lanjut Materi '+i+'</a>';
+    }
+  }
+  if(!quizPassed('ujian')) return '<a class="btn-hero-primary" href="#/ujian">🏆 Kerjakan Ujian Akhir</a>';
+  return '<a class="btn-hero-primary" href="#/materi">📚 Review Materi</a>';
+}
+
+function renderMateriCards(containerId){
+  var c = document.getElementById(containerId);
+  if(!c) return;
+  c.innerHTML = '';
+  MATERI.forEach(function(m){
+    var unlocked = isMateriUnlocked(m.num);
+    var passed = quizPassed('kuis'+m.num);
+    var div = document.createElement('div');
+    div.className = 'materi-card' + (passed?' done':'') + (unlocked?'':' locked');
+    div.innerHTML = ''
+      + (passed ? '<span class="done-tag">✓ Lulus</span>' : (unlocked?'':'<span class="lock-tag">🔒 Terkunci</span>'))
+      + '<div style="display:flex;gap:10px;align-items:center"><div class="materi-num">'+m.num+'</div><h3>'+m.judul+'</h3></div>'
+      + '<small style="color:var(--muted)">'+m.sections.length+' bagian · kuis '+m.kuis.length+' soal</small>'
+      + (bestScore('kuis'+m.num)!==null ? '<small>Nilai kuis terbaik: <strong>'+bestScore('kuis'+m.num)+'</strong></small>' : '')
+      + '<div style="margin-top:auto">'+(unlocked
+          ? '<a class="btn btn-outline" href="#/materidetail/'+m.num+'" style="width:100%">'+(passed?'Baca ulang':'Buka materi')+' →</a>'
+          : '<button class="btn btn-outline" style="width:100%" disabled>🔒 Selesaikan kuis materi '+(m.num-1)+'</button>')
+      + '</div>';
+    c.appendChild(div);
+  });
+}
+
+/* ---------- KOMPONEN: PANEL DISTRIBUSI PROGRES ----------
+   Metafora panel listrik DDK (busbar + MCB), bukan kartu spreadsheet. */
+function panelProgres(){
+  var rows = '';
+  MATERI.forEach(function(m){
+    var on = quizPassed('kuis'+m.num);
+    var nilai = bestScore('kuis'+m.num);
+    var unlocked = isMateriUnlocked(m.num);
+    var state = on ? 'LULUS' : (unlocked ? 'MENUNGGU' : 'TERKUNCI');
+    rows += '<div class="breaker '+(on?'on':'off')+'">'
+      + '<span class="lamp"></span><span class="tag">Q'+m.num+'</span>'
+      + '<span class="name">M'+m.num+' · '+m.judul.split(' ').slice(0,2).join(' ')+'</span>'
+      + '<span class="val">'+(nilai===null?'—':nilai)+'</span>'
+      + '<span class="state">'+state+'</span></div>';
+  });
+  var onU = quizPassed('ujian');
+  var uNilai = bestScore('ujian');
+  rows += '<div class="breaker '+(onU?'on':'off')+'">'
+    + '<span class="lamp"></span><span class="tag">Q5</span>'
+    + '<span class="name">Ujian Akhir</span>'
+    + '<span class="val">'+(uNilai===null?'—':uNilai)+'</span>'
+    + '<span class="state">'+(onU?'LULUS':(isUjianUnlocked()?'SIAP':'TERKUNCI'))+'</span></div>';
+
+  var avg = [];
+  ['kuis1','kuis2','kuis3','kuis4'].forEach(function(k){ if(progress.kuis[k]) avg.push(progress.kuis[k].best); });
+  var avgNilai = avg.length ? Math.round(avg.reduce(function(a,b){return a+b;},0)/avg.length) : null;
+  var semuaLulus = ['kuis1','kuis2','kuis3','kuis4','ujian'].every(function(k){ return quizPassed(k); });
+
+  return '<div class="panel">'
+    + '<div class="panel-head"><div class="panel-title"><span class="bolt">⚡</span> Panel Progres Belajar</div>'
+    + '<span class="panel-tag">DDK · X TITL</span></div>'
+    + '<div class="panel-body"><div class="busbar"></div>' + rows
+    + '<div class="panel-foot">'
+    + '<div><div class="label">Rata-rata nilai kuis</div><div class="readout">'+(avgNilai===null?'—':avgNilai)+'</div></div>'
+    + '<div style="text-align:right"><div class="label">Status</div><div class="readout" style="font-size:15px">'+(semuaLulus?'LULUS 🎉':'BELAJAR')+'</div></div>'
+    + '</div></div></div>';
+}
+
+/* ---------- RENDER: MATERI LIST ---------- */
+function renderMateriList(){
+  var html = '<h1>Modul Materi DDK</h1><small>Selesaikan kuis di akhir materi untuk membuka materi berikutnya.</small><div class="materi-list" id="listMateri"></div>';
+  document.getElementById('main').innerHTML = html;
+  renderMateriCards('listMateri');
+}
+
+/* ---------- RENDER: BLOK KAYA (paragraf, daftar, tabel, kotak, rumus) ---------- */
+function renderBlocks(blocks){
+  if(!blocks) return '';
+  return blocks.map(function(b){
+    if(!b) return '';
+    if(b.t==='ul') return '<ul>'+(b.items||[]).map(function(i){ return '<li>'+i+'</li>'; }).join('')+'</ul>';
+    if(b.t==='table') return '<div class="table-wrap" style="margin:10px 0"><table class="comp-table"><thead><tr>'
+      + (b.head||[]).map(function(h){ return '<th>'+h+'</th>'; }).join('')
+      + '</tr></thead><tbody>'
+      + (b.rows||[]).map(function(r){ return '<tr>'+r.map(function(cl){ return '<td>'+cl+'</td>'; }).join('')+'</tr>'; }).join('')
+      + '</tbody></table></div>';
+    if(b.t==='note') return '<div class="blk-note"><strong>🔎 '+(b.title||'')+'</strong><div>'+b.text+'</div></div>';
+    if(b.t==='case') return '<div class="blk-case"><strong>🧩 '+(b.title||'')+'</strong><div>'+b.text+'</div></div>';
+    if(b.t==='formula') return '<div class="blk-formula">'+(b.text||'')+'</div>';
+    return '<p>'+(b.text||'')+'</p>';
+  }).join('');
+}
+function renderGlosarium(g){
+  if(!g || !g.length) return '';
+  return '<div class="glossary"><div class="glossary-title">📖 Glosarium Istilah</div>'
+    + g.map(function(x){ return '<div class="glossary-row"><span class="glossary-term">'+x.istilah+'</span><span class="glossary-arti">'+x.arti+'</span></div>'; }).join('')
+    + '</div>';
+}
+
+/* ---------- RENDER: MATERI DETAIL ---------- */
+function renderMateriDetail(num){
+  var m = MATERI.find(function(x){return x.num===Number(num);});
+  if(!m){ go('/dashboard'); return; }
+  if(!isMateriUnlocked(m.num)){
+    document.getElementById('main').innerHTML = '<div class="locked-note">🔒 Materi ini terkunci. Lulus kuis Materi '+(m.num-1)+' (nilai ≥ '+PASS_SCORE+') dulu ya. <a href="#/dashboard">Kembali ke dashboard</a></div>';
+    return;
+  }
+  var passed = quizPassed('kuis'+m.num);
+  // Dukung skema baru (`blocks`) maupun lama (`p`) agar tidak ada bagian yang hilang.
+  var secHtml = m.sections.map(function(s){
+    var body = s.blocks ? renderBlocks(s.blocks) : '<p>'+(s.p||'')+'</p>';
+    return '<h3>'+s.h+'</h3>'+body;
+  }).join('');
+  var html = ''
+  + '<a href="#/materi" style="font-size:13px">← Semua materi</a>'
+  + '<h1 style="margin-top:8px">Materi '+m.num+' — '+m.judul+'</h1>'
+  + '<div class="card materi-hero-card" style="margin-top:12px">'
+  + '<img class="materi-banner" src="'+m.img.src+'" alt="'+m.img.cap+'" loading="lazy">'
+  + '<div class="materi-hero-body">'
+  + '<div class="badge-pill">🎯 Tujuan Pembelajaran</div>'
+  + '<p style="margin-top:10px">'+m.tujuan+'</p>'
+  + '<div class="img-credit">'+m.img.credit+'</div>'
+  + '</div></div>'
+  + '<div class="card materi-content">'+secHtml
+  + '<div class="rangkuman"><strong>📌 Rangkuman</strong><br>'+m.rangkuman+'</div>'
+  + renderGlosarium(m.glosarium)
+  + '</div>'
+  + '<div class="card">'
+  + (passed
+      ? '<span class="pill pill-pass">✓ Kuis lulus — nilai '+bestScore('kuis'+m.num)+'</span> <a class="btn btn-outline" style="margin-left:8px" onclick="startQuiz(\'kuis'+m.num+'\')">Ulangi kuis (latihan)</a>'
+      : '<button class="btn-hero-primary" onclick="startQuiz(\'kuis'+m.num+'\')">📝 Kerjakan Kuis Materi '+m.num+' ('+m.kuis.length+' soal)</button>')
+  + '</div>';
+  document.getElementById('main').innerHTML = html;
+}
+
+/* ---------- RENDER: UJIAN ---------- */
+function renderUjian(){
+  if(!isUjianUnlocked()){
+    document.getElementById('main').innerHTML = '<div class="locked-note">🔒 Ujian Akhir terbuka setelah kamu lulus kuis Materi 4. <a href="#/dashboard">Kembali ke dashboard</a></div>';
+    return;
+  }
+  var nilai = bestScore('ujian');
+  var html = ''
+  + '<div class="badge-pill" style="margin-bottom:12px">🏆 Evaluasi Akhir</div>'
+  + '<div class="hero"><div><div class="hero-title">Ujian <span>Akhir</span> DDK.</div>'
+  + '<div class="hero-desc">20 soal pilihan ganda mencakup seluruh materi (Perencanaan, Panel, Pemeliharaan, SDM). Nilai kelulusan ≥ '+PASS_SCORE+'.</div>'
+  + '<div class="hero-cta"><button class="btn-hero-primary" onclick="startQuiz(\'ujian\')">▶ Mulai Ujian</button></div>'
+  + (nilai!==null ? '<small style="display:block;margin-top:10px">Nilai terbaik kamu: <strong>'+nilai+'</strong></small>' : '')
+  + '</div><div class="panel">'
+  + '<div class="panel-head"><div class="panel-title"><span class="bolt">⚡</span> Lembar Ujian Akhir</div>'
+  + '<span class="panel-tag">KKTP '+PASS_SCORE+'</span></div>'
+  + '<div class="panel-body"><div class="busbar"></div>'
+  + '<div class="kv-row"><span class="kv-label">Jumlah soal</span><span class="kv-val">'+UJIAN.length+' pilihan ganda</span></div>'
+  + '<div class="kv-row"><span class="kv-label">Cakupan materi</span><span class="kv-val">4 modul</span></div>'
+  + '<div class="kv-row"><span class="kv-label">KKTP kelulusan</span><span class="kv-val">'+PASS_SCORE+'</span></div>'
+  + '<div class="kv-row"><span class="kv-label">Nilai terbaik kamu</span><span class="kv-val" style="color:var(--primary)">'+(nilai===null?'—':nilai)+'</span></div>'
+  + '</div></div></div>';
+  document.getElementById('main').innerHTML = html;
+}
+
+/* ---------- KUIS & UJIAN — halaman penuh (bukan modal) ---------- */
+var quiz = null;
+
+// Halaman kembali: sumber kuis kalau keluar sebelum selesai.
+function kuisKembali(key){ return key==='ujian' ? '/ujian' : '/materidetail/'+String(key).replace('kuis',''); }
+// Halaman lanjutan setelah hasil tampil.
+function kuisLanjut(key, nomor, isUjian, passed){
+  if(!passed) return { href:'#'+kuisKembali(key), label:'Kembali ke materi' };
+  if(isUjian) return { href:'#/dashboard', label:'Ke Dashboard' };
+  if(nomor < MATERI.length) return { href:'#/materidetail/'+(nomor+1), label:'Materi '+(nomor+1)+' →' };
+  return { href:'#/ujian', label:'Ujian Akhir →' };
+}
+// Pintu masuk dari tombol: pindah ke halaman kuis.
+function startQuiz(key){ go('/kuis/'+key); }
+
+function renderKuis(key){
+  var main = document.getElementById('main');
+  var isUjian = key==='ujian';
+  var nomor = Number(String(key).replace('kuis',''));
+  if(isUjian && !isUjianUnlocked()){
+    main.innerHTML = '<div class="locked-note">🔒 Ujian Akhir terbuka setelah kamu lulus kuis Materi 4. <a href="#/dashboard">Kembali ke dashboard</a></div>';
+    return;
+  }
+  if(!isUjian && (!MATERI[nomor-1] || !isMateriUnlocked(nomor))){
+    main.innerHTML = '<div class="locked-note">🔒 Kuis ini terkunci. Lulus kuis sebelumnya dulu (nilai ≥ '+PASS_SCORE+'). <a href="#/dashboard">Kembali ke dashboard</a></div>';
+    return;
+  }
+  var qs = isUjian ? UJIAN : MATERI[nomor-1].kuis;
+  quiz = { key:key, isUjian:isUjian, nomor:nomor, qs:qs, idx:0, ans:new Array(qs.length).fill(null), done:false };
+  drawKuis();
+}
+
+function drawKuis(){
+  if(!quiz || quiz.done) return;
+  var q = quiz.qs[quiz.idx];
+  var jawab = quiz.ans.filter(function(a){ return a!==null; }).length;
+  var opts = q.o.map(function(o,i){
+    return '<button class="'+(quiz.ans[quiz.idx]===i?'sel':'')+'" onclick="pickOpt('+i+')">'
+      + '<span class="opt-key">'+String.fromCharCode(65+i)+'</span><span>'+o+'</span></button>';
+  }).join('');
+  var nav = quiz.qs.map(function(_, i){
+    var cls = (i===quiz.idx) ? 'current' : (quiz.ans[i]!==null ? 'answered' : '');
+    return '<button class="'+cls+'" onclick="gotoSoal('+i+')">'+(i+1)+'</button>';
+  }).join('');
+  document.getElementById('main').innerHTML = ''
+  + '<div class="quiz-page">'
+  + '<div class="quiz-top">'
+  + '<a class="quiz-exit" href="#'+kuisKembali(quiz.key)+'">← Keluar</a>'
+  + '<div class="quiz-top-title">'+(quiz.isUjian?'🏆 Ujian Akhir':'📝 Kuis Materi '+quiz.nomor)+'</div>'
+  + '<span class="badge-pill">Soal '+(quiz.idx+1)+'/'+quiz.qs.length+'</span>'
+  + '</div>'
+  + '<div class="progress" style="margin:12px 0 14px"><div class="progress-bar green" style="width:'+(jawab/quiz.qs.length*100)+'%"></div></div>'
+  + '<div class="card quiz-card-full">'
+  + '<div class="quiz-q">'+q.q+'</div>'
+  + '<div class="quiz-opts">'+opts+'</div>'
+  + '<div class="why-box" id="whyBox" style="'+(quiz.ans[quiz.idx]!==null && q.why ? 'display:block' : '')+'">'+(q.why?'💡 '+q.why:'')+'</div>'
+  + '</div>'
+  + '<div class="card quiz-nav-wrap">'
+  + '<div class="quiz-nav-title"><span>Navigasi soal</span><span class="quiz-answered-bar">'+jawab+'/'+quiz.qs.length+' terjawab</span></div>'
+  + '<div class="quiz-nav">'+nav+'</div>'
+  + '</div>'
+  + '<div class="quiz-foot">'
+  + '<button class="btn btn-outline" onclick="quizNav(-1)" '+(quiz.idx===0?'disabled':'')+'>← Sebelumnya</button>'
+  + '<button class="btn-hero-primary" onclick="quizNav(1)">'+(quiz.idx===quiz.qs.length-1?'Selesai →':'Lanjut →')+'</button>'
+  + '</div>'
+  + '</div>';
+  window.scrollTo(0,0);
+}
+
+function gotoSoal(i){
+  if(!quiz || quiz.done || i<0 || i>=quiz.qs.length) return;
+  quiz.idx = i;
+  drawKuis();
+}
+
+function pickOpt(i){
+  quiz.ans[quiz.idx] = i;
+  drawKuis();
+}
+
+function quizNav(dir){
+  if(dir===1 && quiz.ans[quiz.idx]===null){ showToast('Pilih salah satu jawaban dulu','error'); return; }
+  var next = quiz.idx + dir;
+  if(next >= quiz.qs.length) return quizResult();
+  quiz.idx = (next < 0) ? 0 : next;
+  drawKuis();
+}
+
+function quizResult(){
+  if(!quiz) return;
+  var score = 0;
+  quiz.qs.forEach(function(q,i){ if(quiz.ans[i]===q.a) score++; });
+  var nilai = Math.round(score/quiz.qs.length*100);
+  var passed = nilai >= PASS_SCORE;
+  var key = quiz.key, isUjian = quiz.isUjian, nomor = quiz.nomor;
+  quiz.done = true;
+
+  // Review soal yang belum tepat + pembahasan.
+  var salah = '';
+  quiz.qs.forEach(function(q,i){
+    if(quiz.ans[i] !== q.a){
+      salah += '<div class="quiz-review-item">'
+        + '<div><b>'+(i+1)+'. '+q.q+'</b></div>'
+        + '<div>Jawabanmu: '+(quiz.ans[i]===null?'—':String.fromCharCode(65+quiz.ans[i]))
+        + ' · Jawaban benar: <b>'+String.fromCharCode(65+q.a)+'. '+q.o[q.a]+'</b></div>'
+        + (q.why ? '<div class="quiz-review-why">💡 '+q.why+'</div>' : '')
+        + '</div>';
+    }
+  });
+  var lanjut = kuisLanjut(key, nomor, isUjian, passed);
+
+  document.getElementById('main').innerHTML = ''
+  + '<div class="quiz-page"><div class="card quiz-result">'
+  + '<div style="font-size:46px">'+(passed?'🎉':'😅')+'</div>'
+  + '<h2 style="margin:8px 0">Nilai kamu: '+nilai+'</h2>'
+  + '<small>Benar '+score+' dari '+quiz.qs.length+' soal · KKTP '+PASS_SCORE+'</small><br><br>'
+  + (passed
+      ? (isUjian ? '<span class="pill pill-pass">🏆 Selamat! Ujian Akhir selesai</span>' : '<span class="pill pill-pass">Materi berikutnya terbuka!</span>')
+      : '<span class="pill pill-fail">Belum lulus — pelajari lagi materinya</span>')
+  + '<div style="display:flex;gap:8px;justify-content:center;margin-top:18px;flex-wrap:wrap">'
+  + '<button class="btn btn-outline" onclick="startQuiz(\''+key+'\')">Coba lagi</button>'
+  + '<a class="btn-hero-primary" href="'+lanjut.href+'">'+lanjut.label+'</a>'
+  + '</div>'
+  + (salah ? '<div class="quiz-review"><h3>Review jawaban yang belum tepat</h3>'+salah+'</div>' : '')
+  + '</div></div>';
+  window.scrollTo(0,0);
+
+  saveQuizResult(key, score, quiz.qs.length, function(){
+    renderNav();
+    if(passed){ showToast((isUjian?'Ujian':'Kuis materi '+nomor)+' lulus! Nilai: '+nilai, 'success'); }
+  });
+}
+
+/* ---------- AUTH & INIT ---------- */
+function doLogout(){
+  var nis = user ? user.nis : null;
+  var finish = function(){ localStorage.removeItem('user'); localStorage.removeItem('nis'); location.href='../'; };
+  if(BACKEND==='gas' && nis){ google.script.run.withSuccessHandler(finish).logout(nis); } else { finish(); }
+}
+
+function init(){
+  try{ user = JSON.parse(localStorage.getItem('user')||'null'); }catch(e){ user=null; }
+  if(!user || !user.nis){ location.href='../'; return; }
+  if(['guru','admin'].indexOf(String(user.role||'').toLowerCase())!==-1){ location.href='../guru/'; return; }
+  document.getElementById('sbUser').textContent = user.nama+' • '+user.kelas;
+  loadProgress(function(){
+    renderNav();
+    window.addEventListener('hashchange', route);
+    route();
+  });
+}
+init();
+</script>
+</body>
+</html>
